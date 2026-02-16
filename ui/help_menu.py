@@ -20,7 +20,7 @@ Contact : voltsparx@gmail.com
 import os
 import time
 from ui.theme import colorize
-from ui.banner import render_banner
+from ui.banner import show_banner
 
 
 # ==================================================
@@ -230,7 +230,7 @@ Defend systems.
 def render_help():
     while True:
         clear_screen()
-        render_banner()
+        show_banner()
 
         print(colorize("\nHelp & Learning Menu", "primary"))
         print(colorize("--------------------", "primary"))
@@ -249,7 +249,7 @@ def render_help():
             continue
 
         clear_screen()
-        render_banner()
+        show_banner()
 
         if key == "intro":
             render_intro()

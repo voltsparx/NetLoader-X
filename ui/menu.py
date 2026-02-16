@@ -18,7 +18,7 @@ import sys
 import time
 from typing import Dict, Any
 
-from ui.banner import render_banner
+from ui.banner import show_banner
 from ui.help_menu import render_help
 from ui.theme import colorize
 from utils.validators import validate_numeric_choice
@@ -71,7 +71,7 @@ PROFILE_MENU = [
 
 def render_menu(title: str, options):
     clear_screen()
-    render_banner()
+    show_banner()
 
     print(colorize(f"\n{title}", "primary"))
     print(colorize("-" * len(title), "primary"))
@@ -241,3 +241,24 @@ def run_menu() -> MenuState:
             clear_screen()
             print(colorize("Exiting NetLoader-X.", "muted"))
             sys.exit(0)
+
+
+# ==================================================
+# PUBLIC INTERFACE
+# ==================================================
+
+def main_menu():
+    """
+    Main menu interface - returns selected profile choice
+    """
+    state = run_menu()
+    
+    # Map profile names to choice numbers
+    profile_map = {
+        "http": "1",
+        "burst": "2", 
+        "slow": "3",
+        "wave": "4"
+    }
+    
+    return profile_map.get(state.attack_profile, "1")

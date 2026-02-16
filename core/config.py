@@ -32,6 +32,26 @@ AUTHOR = "voltsparx"
 CONTACT = "voltsparx@gmail.com"
 
 # ==================================================
+# GLOBAL CONFIG CLASS
+# ==================================================
+
+class GlobalConfig:
+    """
+    Centralized configuration for simulation engine.
+    """
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+    ALLOWED_PORT_RANGE = (1024, 65535)
+    OUTPUT_DIR = "outputs"
+    
+    def __init__(self):
+        self.max_rps = 50000
+        self.burst_size = 100
+        self.burst_cooldown = 2
+        self.slow_hold_time = 10
+        self.slow_chunk_delay = 0.5
+        self.simulated_connections = 100
+
+# ==================================================
 # HARD SAFETY CAPS (NON-NEGOTIABLE)
 # ==================================================
 # These exist to guarantee this tool CANNOT be
@@ -180,7 +200,7 @@ PROFILES: Dict[str, SimulationProfile] = {
 
 def generate_run_id() -> str:
     """Generate a unique simulation run ID."""
-    return datetime.datetime.utcnow().strftime("run_%Y%m%d_%H%M%S")
+    return datetime.datetime.utcnow().strftime("run_%Y-%m-%d_%H-%M-%S")
 
 
 def ensure_output_dirs(run_id: str) -> str:

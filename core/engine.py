@@ -35,7 +35,17 @@ class Engine:
         self.server = LocalhostSimulator(target_profile)
         self.limiter = SafetyLimiter()
         self.metrics = MetricsCollector()
-        self.scheduler = Scheduler()
+        
+        # Create a default RampProfile for scheduler
+        from core.scheduler import RampProfile
+        default_profile = RampProfile(
+            base_rate=100,
+            max_rate=5000,
+            duration=60,
+            jitter=0.05
+        )
+        self.scheduler = Scheduler(default_profile)
+        
         self.running = threading.Event()
         self.attack_name = "SIMULATION-" + str(int(time.time()))
         self.tick_interval = 1.0  # seconds per tick

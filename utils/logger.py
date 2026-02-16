@@ -4,14 +4,14 @@ NetLoader-X Logger
 
 import logging
 from pathlib import Path
-from core.config import GlobalConfig
+import os
 
 
 def get_logger(run_name: str):
-    log_dir = GlobalConfig.OUTPUT_DIR / run_name
-    log_dir.mkdir(parents=True, exist_ok=True)
+    log_dir = os.path.join("outputs", run_name)
+    os.makedirs(log_dir, exist_ok=True)
 
-    log_file = log_dir / "run.log"
+    log_file = os.path.join(log_dir, "run.log")
 
     logger = logging.getLogger(run_name)
     logger.setLevel(logging.DEBUG)
@@ -31,3 +31,10 @@ def get_logger(run_name: str):
         logger.addHandler(ch)
 
     return logger
+
+
+def log_event(event_type: str, data: dict = None):
+    """Log event for debugging/auditing purposes"""
+    if data is None:
+        data = {}
+    print(f"[*] {event_type}: {data}")

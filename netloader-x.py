@@ -33,14 +33,17 @@ def main():
     threads = 50
     duration = 60
 
-    engine = Engine(GlobalConfig(), workload.run if hasattr(workload, "run") else workload.simulate)
+    engine = Engine()
+    engine.configure("small-web", 
+                    "HTTP" if isinstance(workload, HTTPSteady) else "BURST" if isinstance(workload, HTTPBurst) else "SLOW",
+                    threads, duration)
 
     confirm = input("[?] Start simulation? (yes/no): ").lower()
     if confirm != "yes":
         return
 
     clear()
-    engine.start(threads, duration)
+    engine.run()
     live_dashboard(engine)
 
 if __name__ == "__main__":

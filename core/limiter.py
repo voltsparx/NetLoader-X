@@ -26,3 +26,23 @@ class RateLimiter:
                 self.allowance = 0
             else:
                 self.allowance -= 1
+
+
+class SafetyLimiter:
+    """
+    Enforces hard safety limits to prevent misuse.
+    Caps max requests and connections.
+    """
+    
+    def __init__(self, max_events=100000, max_slow_clients=10000):
+        self.max_events = max_events
+        self.max_slow_clients = max_slow_clients
+    
+    def limit(self, events: int, slow_clients: int):
+        """
+        Enforce safety caps on events and slow clients.
+        Returns (capped_events, capped_slow_clients)
+        """
+        events = min(events, self.max_events)
+        slow_clients = min(slow_clients, self.max_slow_clients)
+        return events, slow_clients

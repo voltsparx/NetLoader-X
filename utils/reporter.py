@@ -28,7 +28,7 @@ class Reporter:
     """
 
     def __init__(self, attack_name: str):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         safe_name = attack_name.replace(" ", "_").replace("/", "-")
         self.attack_name = safe_name
         self.folder = os.path.join(OUTPUT_ROOT, f"{safe_name}_{timestamp}")

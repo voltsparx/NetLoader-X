@@ -43,7 +43,7 @@ class SimHTTPFlood(SimulationModel):
             time.sleep(1 / engine.config.max_rps)
 
 
-class SimICMPStorm(SimulationModel):
+class SimICMP(SimulationModel):
     name = "SIM_ICMP"
     description = "Simulates CPU/interrupt pressure (no packets)"
 

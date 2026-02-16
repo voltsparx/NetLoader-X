@@ -1,0 +1,123 @@
+# ============================================================
+# NetLoader-X .gitignore
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+virtualenv/
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.atom/
+.project
+.pydevproject
+.settings/
+*.iml
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Logs
+*.log
+logs/
+
+# Generated Reports & Output
+output/
+outputs/
+*/output/
+*/outputs/
+*.html
+*.csv
+*.json
+!core/config.py
+!utils/html_report.py
+
+# Simulation Data
+*.dat
+*.pkl
+*.pickle
+
+# OS Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# IDE Generated
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# Linting
+.pylint
+.flake8
+.pylintrc
+
+# Mac
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+$RECYCLE.BIN/
+
+# Linux
+.Trash-*
+
+# Misc
+.cache/
+.idea_modules/
+node_modules/
+package-lock.json

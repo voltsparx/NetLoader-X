@@ -19,8 +19,8 @@ from collections import deque
 from statistics import mean, stdev
 
 from ui.theme import colorize
-from ui.banner import render_banner
-from core.metrics import MetricsSnapshot
+from ui.banner import show_banner
+from core.metrics import MetricsCollector
 
 
 # ==================================================
@@ -69,7 +69,7 @@ class LiveDashboard:
 
     def _run(self):
         while self.running.is_set():
-            snapshot = self.metrics.snapshot()
+            snapshot = self.metrics.summary() if hasattr(self.metrics, 'summary') else {}
             self._record(snapshot)
             self._render(snapshot)
             time.sleep(REFRESH_INTERVAL)
@@ -78,19 +78,19 @@ class LiveDashboard:
     # METRIC COLLECTION
     # --------------------------------------------------
 
-    def _record(self, snap: MetricsSnapshot):
-        self.history["rps"].append(snap.requests_per_second)
-        self.history["latency"].append(snap.avg_latency_ms)
-        self.history["errors"].append(snap.error_rate)
-        self.history["queue"].append(snap.queue_depth)
+    def _record(self, snap):
+        self.history["rps"].append(snap.get("requests_per_second", 0))
+        self.history["latency"].append(snap.get("avg_latency_ms", 0))
+        self.history["errors"].append(snap.get("error_rate", 0))
+        self.history["queue"].append(snap.get("queue_depth", 0))
 
     # --------------------------------------------------
     # RENDERING
     # --------------------------------------------------
 
-    def _render(self, snap: MetricsSnapshot):
+    def _render(self, snap):
         self._clear()
-        render_banner()
+        show_banner()
 
         print(colorize("\n[ Live Simulation Dashboard ]", "primary"))
         print(colorize("=" * 60, "primary"))
@@ -111,11 +111,10 @@ class LiveDashboard:
         print(colorize("\nOverview", "section"))
         print(colorize("-" * 60, "section"))
 
-        print(f"Scenario Name       : {snap.scenario_name}")
-        print(f"Simulation Time     : {snap.uptime:.1f} seconds")
-        print(f"Virtual Clients     : {snap.active_clients}")
-        print(f"Profile             : {snap.profile_name}")
-        print(f"Scheduler Phase     : {snap.scheduler_phase}")
+        print(f"Simulation Time     : {snap.get('uptime', 0):.1f} seconds")
+        print(f"Virtual Clients     : {snap.get('active_clients', 0)}")
+        print(f"Profile             : {snap.get('profile_name', 'N/A')}")
+        print(f"Scheduler Phase     : {snap.get('scheduler_phase', 'N/A')}")
 
     def _render_rates(self):
         print(colorize("\nRequest Rate", "section"))
@@ -197,3 +196,25 @@ class LiveDashboard:
     def _clear():
         import os
         os.system("cls" if os.name == "nt" else "clear")
+
+
+# ==================================================
+# PUBLIC INTERFACE
+# ==================================================
+
+def live_dashboard(engine):
+    """
+    Start a live dashboard display for an engine.
+    """
+    dashboard = LiveDashboard(engine.metrics)
+    dashboard.start()
+    
+    try:
+        # Keep dashboard running while engine runs
+        while engine.running.is_set():
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        dashboard.stop()
+        engine.stop()
