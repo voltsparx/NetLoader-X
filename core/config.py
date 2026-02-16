@@ -8,10 +8,9 @@ This module defines:
 - Hard safety enforcement (no real traffic)
 - Default profiles & tunables
 - Output/reporting behavior
-- Tool metadata
 
-Author  : voltsparx
-Contact : voltsparx@gmail.com
+Tool metadata is imported from core.metadata
+
 License : Educational / Defensive Simulation Only
 --------------------------------------------------
 """
@@ -21,15 +20,24 @@ from typing import Dict, List
 import os
 import datetime
 
+# Import metadata from dedicated module
+from core.metadata import (
+    PROJECT_NAME,
+    PROJECT_TAGLINE,
+    VERSION_FULL,
+    AUTHOR_NAME,
+    AUTHOR_EMAIL,
+)
+
 # ==================================================
-# TOOL METADATA
+# TOOL METADATA (from core.metadata)
 # ==================================================
 
-TOOL_NAME = "NetLoader-X"
-TOOL_TAGLINE = "Defensive Load & Failure Simulation Framework"
-TOOL_VERSION = "1.0.0-sim"
-AUTHOR = "voltsparx"
-CONTACT = "voltsparx@gmail.com"
+TOOL_NAME = PROJECT_NAME
+TOOL_TAGLINE = PROJECT_TAGLINE
+TOOL_VERSION = VERSION_FULL
+AUTHOR = AUTHOR_NAME
+CONTACT = AUTHOR_EMAIL
 
 # ==================================================
 # GLOBAL CONFIG CLASS

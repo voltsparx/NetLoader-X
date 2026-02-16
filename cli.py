@@ -11,14 +11,49 @@ Supports:
   - Guided labs mode
   - Report-only mode
 
-Author  : voltsparx
-Contact : voltsparx@gmail.com
+Metadata imported from core.metadata
 """
 
 import argparse
 import sys
 import os
 from pathlib import Path
+from core.metadata import PROJECT_NAME, VERSION_STRING, PROJECT_TAGLINE
+
+
+# Usage examples for help text
+USAGE_EXAMPLES = f"""
+Examples:
+
+  For beginners (interactive menu):
+    python netloader-x.py
+
+  For quick demo (30-second test):
+    python netloader-x.py quick-test
+
+  To learn with guided labs:
+    python netloader-x.py labs --list
+    python netloader-x.py labs --lab 1
+
+  For automation (CLI mode):
+    python netloader-x.py run --profile http --threads 50 --duration 60
+    python netloader-x.py run --profile burst --batch
+
+  For cluster simulation (load balancer + backends):
+    python netloader-x.py cluster --config cluster-config.yaml
+    python netloader-x.py cluster --config cluster-config.yaml --algorithm least-connections
+    python netloader-x.py cluster --config cluster-config.yaml --threads 200 --batch
+
+  To verify configuration:
+    python netloader-x.py validate --detailed
+
+  For real-time web dashboard (requires Flask):
+    python netloader-x.py web --port 8080
+    # Then open http://127.0.0.1:8080 in your browser
+
+  To see version:
+    python netloader-x.py --version
+"""
 
 
 class CLIParser:
@@ -34,9 +69,9 @@ class CLIParser:
         Construct the main argument parser with all subcommands and options.
         """
         parser = argparse.ArgumentParser(
-            prog="NetLoader-X",
-            description="Defensive Load & Failure Simulation Framework",
-            epilog="For educational and defensive testing only.",
+            prog=PROJECT_NAME,
+            description=PROJECT_TAGLINE,
+            epilog=USAGE_EXAMPLES,
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
 
@@ -44,7 +79,7 @@ class CLIParser:
         parser.add_argument(
             "--version",
             action="version",
-            version="NetLoader-X v1.0.0-sim",
+            version=f"{PROJECT_NAME} {VERSION_STRING}",
             help="Show version information"
         )
 
@@ -78,6 +113,12 @@ class CLIParser:
             help="Set random seed for deterministic runs"
         )
 
+        parser.add_argument(
+            "--guide",
+            action="store_true",
+            help="Interactive guide to help you choose the best method for your goals"
+        )
+
         # Subcommands
         subparsers = parser.add_subparsers(
             dest="command",
@@ -100,6 +141,12 @@ class CLIParser:
 
         # Report command
         self._add_report_command(subparsers)
+
+        # Web command
+        self._add_web_command(subparsers)
+
+        # Cluster command
+        self._add_cluster_command(subparsers)
 
         return parser
 
@@ -264,6 +311,92 @@ class CLIParser:
             help="Open generated HTML report in browser"
         )
 
+    def _add_web_command(self, subparsers):
+        """Add the 'web' subcommand for real-time web dashboard."""
+        web_parser = subparsers.add_parser(
+            "web",
+            help="Start real-time web-based dashboard",
+            aliases=["w", "dashboard"]
+        )
+
+        web_parser.add_argument(
+            "--port",
+            type=int,
+            default=8080,
+            help="Port for web dashboard (default: 8080)"
+        )
+
+        web_parser.add_argument(
+            "--host",
+            default="127.0.0.1",
+            help="Host to bind to (default: 127.0.0.1)"
+        )
+
+        web_parser.add_argument(
+            "--auto-open",
+            action="store_true",
+            help="Automatically open dashboard in browser"
+        )
+
+    def _add_cluster_command(self, subparsers):
+        """Add the 'cluster' subcommand for cluster simulation."""
+        cluster_parser = subparsers.add_parser(
+            "cluster",
+            help="Simulate server clusters with load balancing",
+            aliases=["c", "cluster-test"]
+        )
+
+        cluster_parser.add_argument(
+            "--config",
+            type=Path,
+            required=True,
+            help="Cluster configuration file (YAML or JSON)"
+        )
+
+        cluster_parser.add_argument(
+            "--algorithm",
+            choices=["round-robin", "least-connections", "random", "weighted-round-robin", "ip-hash"],
+            help="Override load balancer algorithm from config"
+        )
+
+        cluster_parser.add_argument(
+            "--threads",
+            type=int,
+            default=100,
+            help="Number of client threads (default: 100)"
+        )
+
+        cluster_parser.add_argument(
+            "--duration",
+            type=int,
+            default=60,
+            help="Simulation duration in seconds (default: 60)"
+        )
+
+        cluster_parser.add_argument(
+            "--rate",
+            type=int,
+            help="Target request rate (RPS)"
+        )
+
+        cluster_parser.add_argument(
+            "--batch",
+            action="store_true",
+            help="Run without interactive prompts"
+        )
+
+        cluster_parser.add_argument(
+            "--show-config",
+            action="store_true",
+            help="Display loaded configuration and exit"
+        )
+
+        cluster_parser.add_argument(
+            "--example-config",
+            action="store_true",
+            help="Show example cluster configuration"
+        )
+
     def parse(self, args=None) -> argparse.Namespace:
         """
         Parse command-line arguments.
@@ -281,12 +414,130 @@ class CLIParser:
         self.parser.print_help()
 
 
+def show_guide():
+    """
+    Interactive guide to help users choose the best method for their goals.
+    """
+    print("\n" + "=" * 70)
+    print("🧭 NetLoader-X :: Interactive Guide")
+    print("=" * 70)
+    print("\nLet me help you choose the best method for your goals!\n")
+
+    # Goal selection
+    print("What's your primary goal? Select one:\n")
+    goals = {
+        "1": {
+            "name": "Learn how NetLoader-X works",
+            "desc": "Interactive tutorial with explanations",
+            "recommended": "Guided Labs",
+            "commands": [
+                "python netloader-x.py labs --list  # See available labs",
+                "python netloader-x.py labs --lab 1  # Start with Lab 1"
+            ]
+        },
+        "2": {
+            "name": "Quick demo (see it in action)",
+            "desc": "30-second test with default settings",
+            "recommended": "Quick-Test Mode",
+            "commands": [
+                "python netloader-x.py quick-test  # Run standard demo",
+                "python netloader-x.py quick-test --short  # 10-second version"
+            ]
+        },
+        "3": {
+            "name": "Custom testing (hands-on control)",
+            "desc": "Configure your own simulation parameters",
+            "recommended": "Interactive Run Mode",
+            "commands": [
+                "python netloader-x.py run  # Menu-driven configuration",
+                "python netloader-x.py run -i  # Explicit interactive mode"
+            ]
+        },
+        "4": {
+            "name": "Automation (scripts/CI/CD)",
+            "desc": "Headless mode for integration into workflows",
+            "recommended": "Batch CLI Mode",
+            "commands": [
+                "python netloader-x.py run --profile http --threads 100 --duration 60 --batch",
+                "python netloader-x.py run --profile burst --rate 1000 --batch"
+            ]
+        },
+        "5": {
+            "name": "Validate before running",
+            "desc": "Check configuration and safety constraints",
+            "recommended": "Validate Command",
+            "commands": [
+                "python netloader-x.py validate --detailed",
+                "python netloader-x.py validate --config custom.yaml"
+            ]
+        },
+        "6": {
+            "name": "Analyze existing results",
+            "desc": "Generate reports from previous runs",
+            "recommended": "Report Command",
+            "commands": [
+                "python netloader-x.py report ./outputs --format html",
+                "python netloader-x.py report ./outputs --format all --open"
+            ]
+        }
+    }
+
+    for key, goal in goals.items():
+        print(f"  {key}. {goal['name']}")
+        print(f"     → {goal['desc']}\n")
+
+    # Get user selection
+    while True:
+        choice = input("Enter your choice (1-6) or 'q' to quit: ").strip().lower()
+        if choice == 'q':
+            print("\nGoodbye! 👋")
+            return
+        if choice in goals:
+            break
+        print("❌ Invalid choice. Please enter 1-6 or 'q'.\n")
+
+    selected = goals[choice]
+    
+    # Display recommendation
+    print("\n" + "-" * 70)
+    print(f"✨ RECOMMENDED: {selected['recommended']}")
+    print("-" * 70 + "\n")
+    print("Here are the commands to get started:\n")
+    
+    for i, cmd in enumerate(selected['commands'], 1):
+        print(f"  {i}. {cmd}")
+    
+    print("\n💡 TIP: You can always use 'python netloader-x.py --help' for full options")
+    print("        or 'python netloader-x.py <command> --help' for command-specific help\n")
+    
+    # Offer to run a command
+    run_cmd = input("Would you like me to show the help for this command? (y/n): ").strip().lower()
+    if run_cmd == 'y':
+        if selected['recommended'] == "Guided Labs":
+            os.system("python netloader-x.py labs --help")
+        elif selected['recommended'] == "Quick-Test Mode":
+            os.system("python netloader-x.py quick-test --help")
+        elif selected['recommended'] == "Interactive Run Mode":
+            os.system("python netloader-x.py run --help")
+        elif selected['recommended'] == "Batch CLI Mode":
+            os.system("python netloader-x.py run --help")
+        elif selected['recommended'] == "Validate Command":
+            os.system("python netloader-x.py validate --help")
+        elif selected['recommended'] == "Report Command":
+            os.system("python netloader-x.py report --help")
+
+
 def main():
     """
     Entry point for CLI testing.
     """
     cli = CLIParser()
     args = cli.parse()
+
+    # Check for guide flag first (takes precedence)
+    if args.guide:
+        show_guide()
+        return
 
     if args.command is None:
         # Default: interactive menu mode

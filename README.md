@@ -1,6 +1,6 @@
 # NetLoader-X
 
-**Defensive Load & Failure Simulation Framework** - v1.0.0  
+**Defensive Load & Failure Simulation Framework** - v2.3.0  
 *Safe, educational tool for stress-testing and resilience learning*
 
 A comprehensive Python framework for simulating server load patterns and analyzing system behavior under stress—entirely offline, localhost-only, with powerful educational tools.
@@ -17,6 +17,34 @@ NetLoader-X enables **defensive engineers, system architects, and DevOps teams**
 - ✅ Defense strategies and thresholds
 
 This is **100% safe**: No real network traffic, no real attacks, pure mathematical simulation.
+
+---
+
+## 🚀 Quick Commands
+
+```bash
+# For beginners (interactive menu)
+python netloader-x.py
+
+# For quick demo (30 second test)
+python netloader-x.py quick-test
+
+# To learn with guided labs
+python netloader-x.py labs --list
+python netloader-x.py labs --lab 1
+
+# For automation (CLI mode)
+python netloader-x.py run --profile http --threads 50 --duration 60
+
+# To test cluster/load balancer scenarios
+python netloader-x.py cluster --config cluster-config.yaml
+
+# To verify configuration
+python netloader-x.py validate --detailed
+
+# Get full help with examples
+python netloader-x.py --help
+```
 
 ---
 
@@ -65,7 +93,9 @@ python netloader-x.py validate --detailed
 | Feature | Status | Details |
 |---------|--------|---------|
 | **Multiple Attack Profiles** | ✅ | HTTP Steady, Burst, Slow Client, Wave, Chaos |
-| **Real-time Dashboard** | ✅ | Live metrics with ASCII graphs |
+| **ASCII Real-time Dashboard** | ✅ | Live metrics in terminal |
+| **Web-based Dashboard** | ✅ | Optional Flask dashboard with Chart.js graphs |
+| **Cluster Simulation** | ✅ | Load balancers, multiple backends, DB layer |
 | **Metrics Collection** | ✅ | RPS, latency, queue depth, errors |
 | **Report Generation** | ✅ | CSV, JSON, HTML with interactive charts |
 | **Safety Enforcement** | ✅ | Hard limits, no external access |
@@ -166,7 +196,25 @@ python netloader-x.py run --profile slow --threads 100 --duration 120
 python netloader-x.py run --profile http --batch
 ```
 
-### 5. Configuration Validation
+### 5. Cluster Simulation (New!)
+
+```bash
+# Basic cluster with load balancer
+python netloader-x.py cluster --config cluster-config.yaml
+
+# Override load balancer algorithm
+python netloader-x.py cluster --config cluster-config.yaml --algorithm least-connections
+
+# Custom load parameters
+python netloader-x.py cluster --config cluster-config.yaml --threads 200 --duration 120
+
+# Show configuration before running
+python netloader-x.py cluster --config cluster-config.yaml --show-config
+```
+
+See [CLUSTER_FEATURE.md](CLUSTER_FEATURE.md) for full documentation.
+
+### 6. Configuration Validation
 
 ```bash
 # Basic validation
@@ -245,6 +293,53 @@ Current Error Rate  : 8.45%
 Average Error Rate  : 2.34%
 [errors  ] |##                                        |
 ```
+
+### 🌐 Web-Based Dashboard (Optional)
+
+NetLoader-X includes an optional **real-time web dashboard** for advanced visualization. Install optional dependencies to enable:
+
+```bash
+# Install Flask and dependencies
+pip install flask flask-cors
+
+# Start the web dashboard
+python netloader-x.py web --port 8080
+
+# Open http://127.0.0.1:8080 in your browser
+```
+
+**Features:**
+- 📈 **Live Chart.js graphs** - RPS, Latency, Queue Depth, Active Clients
+- 🔄 **Auto-refresh metrics** - Updates every 2 seconds
+- 📊 **Multiple metric views** - Current values, aggregates, percentiles
+- 📥 **Export functionality** - Snapshot download as JSON or CSV
+- 📱 **Mobile-responsive design** - Works on phones and tablets
+
+**Commands:**
+
+```bash
+# Start on default port 8080
+python netloader-x.py web
+
+# Custom port
+python netloader-x.py web --port 9090
+
+# Custom host (advanced)
+python netloader-x.py web --host 192.168.1.100 --port 8080
+
+# Auto-open in browser
+python netloader-x.py web --auto-open
+```
+
+**What you'll see:**
+- Real-time RPS chart with live updates
+- Latency trends and percentile stats (p90, p99)
+- Queue depth visualization
+- Active client connections
+- Current metrics in metric cards
+- One-click export buttons
+
+> **Note:** The web dashboard is optional. Core simulation runs fine without Flask.
 
 ### Generated Reports
 
@@ -619,7 +714,7 @@ Found a bug? Have a feature idea?
 **Author**: voltsparx  
 **Email**: voltsparx@gmail.com  
 **GitHub**: https://github.com/voltsparx/NetLoader-X  
-**Version**: 1.0.0-sim  
+**Version**: 2.3.0  
 
 ---
 
@@ -917,7 +1012,7 @@ No other external dependencies required. Python standard library is sufficient.
 
 ## Version
 
-**v1.0.0-sim** (Simulation Framework)
+**v2.3.0** (Simulation Framework)
 
 ---
 
