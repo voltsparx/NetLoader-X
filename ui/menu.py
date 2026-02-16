@@ -145,7 +145,7 @@ def profile_menu(state: MenuState):
 
 def configuration_menu(state: MenuState):
     clear_screen()
-    render_banner()
+    show_banner()
 
     print(colorize("\nSimulation Configuration", "primary"))
     print(colorize("------------------------", "primary"))
@@ -159,7 +159,7 @@ def configuration_menu(state: MenuState):
 
 def target_menu(state: MenuState):
     clear_screen()
-    render_banner()
+    show_banner()
 
     print(colorize("\nFake Server Behavior Model", "primary"))
     print(colorize("---------------------------", "primary"))
@@ -177,7 +177,7 @@ def target_menu(state: MenuState):
 
 def confirm_start(state: MenuState) -> bool:
     clear_screen()
-    render_banner()
+    show_banner()
 
     print(colorize("\nSimulation Summary", "primary"))
     print(colorize("-------------------", "primary"))

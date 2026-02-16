@@ -5,10 +5,12 @@
 # NONE - Using pure ANSI escape codes for terminal colors (no external dependencies)
 
 # Optional but recommended
-# Uncomment below for development/testing
+# Uncomment below for development/testing/enhanced features
 
 # pytest>=7.0.0       # Unit testing framework
 # pytest-cov>=3.0.0   # Code coverage
+# pyyaml>=5.0.0       # YAML profile support (for custom profiles)
 # black>=22.0.0       # Code formatter
 # pylint>=2.12.0      # Code linter
 # mypy>=0.910         # Static type checker
+# rich>=12.0.0        # Optional: Enhanced terminal output (Rich library)
