@@ -2,6 +2,7 @@
 NetLoader-X Theme Definitions
 """
 
+# Rich Theme Colors
 class Theme:
     BLUE = "bold bright_blue"
     CYAN = "bright_cyan"
@@ -13,29 +14,35 @@ class Theme:
     WHITE = "white"
 
 
+# ANSI Color Codes (for direct terminal output without Rich)
+class ANSIColor:
+    """ANSI escape codes for terminal colors"""
+    BLUE = "\033[94m"          # Bright Blue
+    CYAN = "\033[96m"          # Bright Cyan
+    GREEN = "\033[92m"         # Bright Green
+    YELLOW = "\033[93m"        # Bright Yellow
+    ORANGE = "\033[38;2;255;165;0m"        # Orange 
+    GRAY = "\033[90m"          # Bright Gray
+    RED = "\033[91m"           # Bright Red
+    WHITE = "\033[97m"         # Bright White
+    RESET = "\033[0m"          # Reset to default
+
+
 def colorize(text: str, style: str = "info") -> str:
     """
-    Simple text coloring utility.
+    Simple text coloring utility using ANSI codes.
     Returns colored text for terminal output.
     """
-    try:
-        from rich.console import Console
-        from rich.style import Style
-        console = Console()
-        
-        style_map = {
-            "primary": "bold bright_blue",
-            "info": "bright_cyan",
-            "success": "bright_green",
-            "warning": "yellow",
-            "error": "bold red",
-            "muted": "grey70",
-            "section": "bold bright_blue",
-            "prompt": "bright_cyan"
-        }
-        
-        actual_style = style_map.get(style, "white")
-        return f"[{actual_style}]{text}[/]"
-    except:
-        # Fallback if rich is not available
-        return text
+    style_map = {
+        "primary": ANSIColor.BLUE,
+        "info": ANSIColor.CYAN,
+        "success": ANSIColor.GREEN,
+        "warning": ANSIColor.YELLOW,
+        "error": ANSIColor.RED,
+        "muted": ANSIColor.GRAY,
+        "section": ANSIColor.BLUE,
+        "prompt": ANSIColor.CYAN
+    }
+    
+    color = style_map.get(style, ANSIColor.WHITE)
+    return f"{color}{text}{ANSIColor.RESET}"

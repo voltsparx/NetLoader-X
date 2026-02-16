@@ -2,7 +2,7 @@
 # Defensive Load & Failure Simulation Framework
 
 # Core Dependencies
-rich>=12.0.0          # Enhanced terminal output with colors and styling
+# NONE - Using pure ANSI escape codes for terminal colors (no external dependencies)
 
 # Optional but recommended
 # Uncomment below for development/testing
