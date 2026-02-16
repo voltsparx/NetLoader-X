@@ -407,5 +407,5 @@ This security policy is part of the NetLoader-X project and covered by the same 
 ---
 
 **Last Updated**: 2026-02-16  
-**Version**: 2.3.0  
+**Version**: 3.0  
 **Status**: ✅ Active & Enforced

@@ -492,7 +492,7 @@ class WebDashboard:
         </div>
 
         <footer>
-            <p>NetLoader-X v2.3.0 | Real-time web dashboard | Metrics auto-refresh every 2 seconds</p>
+            <p>NetLoader-X v3.0 | Real-time web dashboard | Metrics auto-refresh every 2 seconds</p>
         </footer>
     </div>
 
