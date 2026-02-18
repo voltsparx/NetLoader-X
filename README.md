@@ -118,7 +118,7 @@ Example:
 python netloader-x.py run --profile mixed --threads 60 --duration 90
 ```
 
-## Reports (Beautiful HTML Output)
+## Reports (HTML Output)
 
 Unless you use `--no-report`, each run exports a new folder under your output directory:
 
