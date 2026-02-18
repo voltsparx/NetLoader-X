@@ -1,0 +1,33 @@
+{
+  "load_balancer": {
+    "algorithm": "round-robin",
+    "backends": [
+      {
+        "name": "web-server-1",
+        "workers": 50,
+        "max_queue": 100,
+        "base_latency": 0.05,
+        "max_latency": 2.0
+      },
+      {
+        "name": "web-server-2",
+        "workers": 50,
+        "max_queue": 100,
+        "base_latency": 0.05,
+        "max_latency": 2.0
+      },
+      {
+        "name": "cache-server",
+        "workers": 30,
+        "max_queue": 80,
+        "base_latency": 0.03,
+        "max_latency": 1.5
+      }
+    ]
+  },
+  "database": {
+    "connection_pool": 20,
+    "cache_enabled": true
+  }
+}
+

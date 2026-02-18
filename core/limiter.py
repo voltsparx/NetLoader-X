@@ -1,48 +1,50 @@
-import time
 import threading
+import time
+
+from core.config import SAFETY_CAPS
+
 
 class RateLimiter:
     """
-    Token-bucket rate limiter for SAFE simulations
+    Token-bucket limiter for simulation pacing.
     """
-    def __init__(self, rate_per_sec):
-        self.rate = rate_per_sec
-        self.allowance = rate_per_sec
-        self.last_check = time.time()
+
+    def __init__(self, rate_per_sec: int):
+        if rate_per_sec <= 0:
+            raise ValueError("rate_per_sec must be positive")
+        self.rate = int(rate_per_sec)
+        self.allowance = float(self.rate)
+        self.last_check = time.monotonic()
         self.lock = threading.Lock()
 
     def wait(self):
         with self.lock:
-            now = time.time()
+            now = time.monotonic()
             elapsed = now - self.last_check
             self.last_check = now
 
-            self.allowance += elapsed * self.rate
-            if self.allowance > self.rate:
-                self.allowance = self.rate
+            self.allowance = min(float(self.rate), self.allowance + elapsed * self.rate)
+            if self.allowance >= 1.0:
+                self.allowance -= 1.0
+                return
 
-            if self.allowance < 1:
-                time.sleep((1 - self.allowance) / self.rate)
-                self.allowance = 0
-            else:
-                self.allowance -= 1
+            sleep_for = (1.0 - self.allowance) / self.rate
+
+        time.sleep(max(0.0, sleep_for))
+        with self.lock:
+            self.allowance = max(0.0, self.allowance - 1.0)
 
 
 class SafetyLimiter:
     """
-    Enforces hard safety limits to prevent misuse.
-    Caps max requests and connections.
+    Enforce non-negotiable simulation caps.
     """
-    
-    def __init__(self, max_events=100000, max_slow_clients=10000):
-        self.max_events = max_events
-        self.max_slow_clients = max_slow_clients
-    
+
+    def __init__(self, max_events: int = None, max_slow_clients: int = None):
+        self.max_events = int(max_events or SAFETY_CAPS["MAX_EVENTS_PER_SECOND"])
+        self.max_slow_clients = int(max_slow_clients or SAFETY_CAPS["MAX_VIRTUAL_CLIENTS"])
+
     def limit(self, events: int, slow_clients: int):
-        """
-        Enforce safety caps on events and slow clients.
-        Returns (capped_events, capped_slow_clients)
-        """
-        events = min(events, self.max_events)
-        slow_clients = min(slow_clients, self.max_slow_clients)
+        events = max(0, min(int(events), self.max_events))
+        slow_clients = max(0, min(int(slow_clients), self.max_slow_clients))
         return events, slow_clients

@@ -1,0 +1,97 @@
+NetLoader-X v3.7 - Usage
+========================
+
+NetLoader-X is a safe, offline simulation framework for learning how systems
+degrade under stress.
+
+It does NOT send network traffic.
+It does NOT open sockets.
+It does NOT target external hosts.
+It only simulates metrics and state changes locally.
+
+
+Requirements
+------------
+- Python 3.8+ (tested on Python 3.13)
+- No mandatory third-party dependencies for core simulation
+
+Optional dependencies (only for extra features)
+-----------------------------------------------
+- pyyaml: required only to load .yaml/.yml cluster config files
+  Install: pip install pyyaml
+- flask + flask-cors: required only for the local web dashboard
+  Install: pip install flask flask-cors
+- pytest: required only to run the pytest test suite
+  Install: pip install pytest
+
+
+Run Modes (Common Commands)
+---------------------------
+
+1) Interactive menu (default)
+   python netloader-x.py
+
+2) Quick demo
+   python netloader-x.py quick-test
+   python netloader-x.py quick-test --short
+   python netloader-x.py quick-test --profile mixed --short --no-dashboard --no-report
+
+3) Custom simulation (CLI)
+   python netloader-x.py run --profile http --threads 50 --duration 60
+   python netloader-x.py run --profile wave --threads 80 --duration 90 --chaos --chaos-rate 0.05
+
+4) Guided labs (educational scenarios)
+   python netloader-x.py labs --list
+   python netloader-x.py labs --lab 1
+   python netloader-x.py labs --lab 7 --description-only
+
+5) Validate setup and safety caps
+   python netloader-x.py validate
+   python netloader-x.py validate --detailed
+
+6) Cluster simulation
+   JSON example (stdlib-only):
+   python netloader-x.py cluster --config cluster-config-example.json --duration 60 --rate 100
+
+   YAML example (requires PyYAML):
+   python netloader-x.py cluster --config cluster-config-example.yaml
+
+7) Analyze existing reports
+   python netloader-x.py report outputs
+   python netloader-x.py report --format all
+
+
+Global Flags
+------------
+These flags work both before OR after the subcommand:
+  python netloader-x.py --no-report quick-test --short
+  python netloader-x.py quick-test --short --no-report
+
+- --output-dir, -o : base folder for report exports (default: outputs)
+- --seed           : random seed for deterministic runs
+- --no-report      : do not write report files
+- --verbose, -v    : extra logs
+- --guide          : interactive command selection helper
+- --version        : show version
+
+
+Report Output
+-------------
+After a run (unless --no-report is used), NetLoader-X writes a folder under the
+output directory, for example:
+
+  outputs/HTTP-1700000000_2026-02-18_22-10-30/
+
+Files inside:
+- metrics.json  : full raw ticks + aggregates + series
+- metrics.csv   : raw tick table
+- metrics.html  : readable HTML report (includes charts + bar graphs)
+- summary.txt   : quick text summary
+
+
+Safety Notes
+------------
+- Localhost-only simulation (no external targets)
+- No sockets, packets, or raw traffic features
+- Hard safety caps are enforced at startup (see core/config.py)
+

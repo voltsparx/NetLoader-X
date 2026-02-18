@@ -20,16 +20,11 @@ from statistics import mean, stdev
 
 from ui.theme import colorize
 from ui.banner import show_banner
-from core.metrics import MetricsCollector
 
 
-# ==================================================
-# DASHBOARD CONFIGURATION
-# ==================================================
-
-REFRESH_INTERVAL = 0.5          # seconds
-ROLLING_WINDOW = 60             # samples
-MAX_GRAPH_WIDTH = 40
+# Dashboard configuration
+REFRESH_INTERVAL = 0.5
+ROLLING_WINDOW = 60
 
 
 # ==================================================
@@ -80,7 +75,7 @@ class LiveDashboard:
 
     def _record(self, snap):
         self.history["rps"].append(snap.get("requests_per_second", 0))
-        self.history["latency"].append(snap.get("avg_latency_ms", 0))
+        self.history["latency"].append(snap.get("latency_ms", 0))
         self.history["errors"].append(snap.get("error_rate", 0))
         self.history["queue"].append(snap.get("queue_depth", 0))
 
@@ -112,9 +107,9 @@ class LiveDashboard:
         print(colorize("-" * 60, "section"))
 
         print(f"Simulation Time     : {snap.get('uptime', 0):.1f} seconds")
-        print(f"Virtual Clients     : {snap.get('active_clients', 0)}")
+        print(f"Virtual Clients     : {snap.get('active_clients', snap.get('active_workers', 0))}")
         print(f"Profile             : {snap.get('profile_name', 'N/A')}")
-        print(f"Scheduler Phase     : {snap.get('scheduler_phase', 'N/A')}")
+        print(f"Attack Profile      : {snap.get('attack_profile', 'N/A')}")
 
     def _render_rates(self):
         print(colorize("\nRequest Rate", "section"))
@@ -123,10 +118,9 @@ class LiveDashboard:
         avg = self._safe_mean(self.history["rps"])
         peak = max(self.history["rps"], default=0)
 
-        print(f"Current RPS         : {self.history['rps'][-1]:.1f}")
+        print(f"Current RPS         : {self.history['rps'][-1]:.1f}" if self.history["rps"] else "Current RPS         : 0.0")
         print(f"Average RPS         : {avg:.1f}")
         print(f"Peak RPS            : {peak:.1f}")
-        print(self._bar_graph(self.history["rps"], "rps"))
 
     def _render_latency(self):
         print(colorize("\nLatency (ms)", "section"))
@@ -137,7 +131,6 @@ class LiveDashboard:
 
         print(f"Average Latency     : {avg:.1f} ms")
         print(f"Latency Jitter      : {jitter:.1f} ms")
-        print(self._bar_graph(self.history["latency"], "latency"))
 
     def _render_queue(self):
         print(colorize("\nQueue Depth", "section"))
@@ -145,9 +138,8 @@ class LiveDashboard:
 
         max_q = max(self.history["queue"], default=0)
 
-        print(f"Current Queue Depth : {self.history['queue'][-1]}")
+        print(f"Current Queue Depth : {self.history['queue'][-1]}" if self.history["queue"] else "Current Queue Depth : 0")
         print(f"Max Queue Observed  : {max_q}")
-        print(self._bar_graph(self.history["queue"], "queue"))
 
     def _render_errors(self):
         print(colorize("\nError Rate", "section"))
@@ -155,26 +147,11 @@ class LiveDashboard:
 
         avg = self._safe_mean(self.history["errors"])
 
-        print(f"Current Error Rate  : {self.history['errors'][-1]*100:.2f}%")
+        if self.history["errors"]:
+            print(f"Current Error Rate  : {self.history['errors'][-1]*100:.2f}%")
+        else:
+            print("Current Error Rate  : 0.00%")
         print(f"Average Error Rate  : {avg*100:.2f}%")
-        print(self._bar_graph(self.history["errors"], "errors"))
-
-    # --------------------------------------------------
-    # GRAPH UTILITIES
-    # --------------------------------------------------
-
-    def _bar_graph(self, values, label):
-        if not values:
-            return ""
-
-        peak = max(values)
-        if peak <= 0:
-            peak = 1
-
-        scaled = int((values[-1] / peak) * MAX_GRAPH_WIDTH)
-        bar = "#" * scaled
-
-        return f"[{label:<8}] |{bar:<{MAX_GRAPH_WIDTH}}|"
 
     # --------------------------------------------------
     # SAFE STATS

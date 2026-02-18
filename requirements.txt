@@ -1,16 +1,20 @@
 # NetLoader-X Requirements
 # Defensive Load & Failure Simulation Framework
 
-# Core Dependencies
-# NONE - Using pure ANSI escape codes for terminal colors (no external dependencies)
+# Core Runtime Dependencies
+# NONE - Core simulation runs on the Python standard library only.
 
-# Optional but recommended
-# Uncomment below for development/testing/enhanced features
+# Optional Dependencies (Development + Extra Features)
+# Install these only if you want the related capability:
+#   pip install -r requirements.txt
 
 pytest>=7.0.0       # Unit testing framework
 pytest-cov>=3.0.0   # Code coverage
 pyyaml>=5.0.0       # YAML profile support (for custom profiles)
+flask>=2.0.0        # Optional: Local web dashboard
+flask-cors>=3.0.0   # Optional: CORS headers for dashboard API
 black>=22.0.0       # Code formatter
+pyflakes>=3.0.0     # Lightweight import/undefined-name checks
 pylint>=2.12.0      # Code linter
 mypy>=0.910         # Static type checker
 rich>=12.0.0        # Optional: Enhanced terminal output (Rich library)

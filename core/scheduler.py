@@ -14,10 +14,10 @@ Author  : voltsparx
 --------------------------------------------------
 """
 
-import time
 import math
 import random
 import threading
+import time
 from typing import Dict, Optional
 
 
@@ -48,6 +48,11 @@ class ScheduleProfile:
     def rate_at(self, tick: int) -> int:
         raise NotImplementedError
 
+    def _apply_jitter(self, rate: float) -> int:
+        if self.jitter > 0:
+            rate *= self.random.uniform(1 - self.jitter, 1 + self.jitter)
+        return max(0, int(rate))
+
 
 # ==================================================
 # RAMP PROFILE
@@ -59,7 +64,7 @@ class RampProfile(ScheduleProfile):
     """
 
     def rate_at(self, tick: int) -> int:
-        if tick >= self.duration:
+        if self.duration <= 0 or tick >= self.duration:
             rate = self.max_rate
         else:
             rate = self.base_rate + (
@@ -68,14 +73,6 @@ class RampProfile(ScheduleProfile):
             )
 
         return self._apply_jitter(rate)
-
-    def _apply_jitter(self, rate: float) -> int:
-        if self.jitter > 0:
-            rate *= self.random.uniform(
-                1 - self.jitter,
-                1 + self.jitter
-            )
-        return max(0, int(rate))
 
 
 # ==================================================
@@ -97,7 +94,7 @@ class WaveProfile(ScheduleProfile):
         seed: Optional[int] = None
     ):
         super().__init__(base_rate, max_rate, duration, jitter, seed)
-        self.period = period
+        self.period = max(1, int(period))
 
     def rate_at(self, tick: int) -> int:
         amplitude = (self.max_rate - self.base_rate) / 2
@@ -108,14 +105,6 @@ class WaveProfile(ScheduleProfile):
         )
 
         return self._apply_jitter(rate)
-
-    def _apply_jitter(self, rate: float) -> int:
-        if self.jitter > 0:
-            rate *= self.random.uniform(
-                1 - self.jitter,
-                1 + self.jitter
-            )
-        return max(0, int(rate))
 
 
 # ==================================================
@@ -138,8 +127,8 @@ class BurstProfile(ScheduleProfile):
         seed: Optional[int] = None
     ):
         super().__init__(base_rate, max_rate, duration, jitter, seed)
-        self.burst_interval = burst_interval
-        self.burst_length = burst_length
+        self.burst_interval = max(1, int(burst_interval))
+        self.burst_length = max(1, int(burst_length))
 
     def rate_at(self, tick: int) -> int:
         phase = tick % self.burst_interval
@@ -151,14 +140,6 @@ class BurstProfile(ScheduleProfile):
 
         return self._apply_jitter(rate)
 
-    def _apply_jitter(self, rate: float) -> int:
-        if self.jitter > 0:
-            rate *= self.random.uniform(
-                1 - self.jitter,
-                1 + self.jitter
-            )
-        return max(0, int(rate))
-
 
 # ==================================================
 # SLOW-CLIENT (BEHAVIORAL)
@@ -169,7 +150,7 @@ class SlowClientProfile(ScheduleProfile):
     Simulates slow-client pressure patterns
     (e.g., long-hold connections conceptually).
 
-    NOTE: purely behavioral — no connections.
+    NOTE: purely behavioral - no connections.
     """
 
     def __init__(
@@ -185,18 +166,38 @@ class SlowClientProfile(ScheduleProfile):
         self.hold_factor = hold_factor
 
     def rate_at(self, tick: int) -> int:
-        decay = math.exp(-tick / (self.duration * self.hold_factor))
+        denom = max(1.0, self.duration * self.hold_factor)
+        decay = math.exp(-tick / denom)
         rate = self.max_rate * decay + self.base_rate
 
         return self._apply_jitter(rate)
 
-    def _apply_jitter(self, rate: float) -> int:
-        if self.jitter > 0:
-            rate *= self.random.uniform(
-                1 - self.jitter,
-                1 + self.jitter
-            )
-        return max(0, int(rate))
+
+class StairStepProfile(ScheduleProfile):
+    """
+    Gradual staircase increase for mixed-vector scenarios.
+    """
+
+    def __init__(
+        self,
+        base_rate: int,
+        max_rate: int,
+        duration: int,
+        steps: int = 5,
+        jitter: float = 0.0,
+        seed: Optional[int] = None,
+    ):
+        super().__init__(base_rate, max_rate, duration, jitter, seed)
+        self.steps = max(1, int(steps))
+
+    def rate_at(self, tick: int) -> int:
+        if self.duration <= 0:
+            return self._apply_jitter(self.max_rate)
+        step_size = self.duration / self.steps
+        current_step = min(self.steps, int(tick / max(1.0, step_size)) + 1)
+        progress = current_step / self.steps
+        rate = self.base_rate + ((self.max_rate - self.base_rate) * progress)
+        return self._apply_jitter(rate)
 
 
 # ==================================================
@@ -279,7 +280,8 @@ class Scheduler:
             payload = {
                 "tick": self.tick,
                 "rate": rate,
-                "paused": False
+                "paused": False,
+                "timestamp": time.time(),
             }
 
             self.tick += 1

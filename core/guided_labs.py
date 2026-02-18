@@ -252,8 +252,8 @@ Servers don't recover instantly after overload.
 Observe the slow, asymmetric recovery pattern.
 
 What you'll see:
-1. Load builds → degradation → peak latency
-2. Load drops → slow recovery (recovery lag)
+1. Load builds -> degradation -> peak latency
+2. Load drops -> slow recovery (recovery lag)
 3. Recovery slower than degradation (hysteresis)
 4. Cascading effects persist even as traffic drops
 

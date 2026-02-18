@@ -28,6 +28,16 @@ class ANSIColor:
     RESET = "\033[0m"          # Reset to default
 
 
+def supports_color() -> bool:
+    """
+    Basic ANSI color support check.
+    """
+    import os
+    if os.environ.get("NO_COLOR"):
+        return False
+    return True
+
+
 def colorize(text: str, style: str = "info") -> str:
     """
     Simple text coloring utility using ANSI codes.
@@ -44,5 +54,8 @@ def colorize(text: str, style: str = "info") -> str:
         "prompt": ANSIColor.CYAN
     }
     
+    if not supports_color():
+        return text
+
     color = style_map.get(style, ANSIColor.WHITE)
     return f"{color}{text}{ANSIColor.RESET}"

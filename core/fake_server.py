@@ -12,7 +12,6 @@ Purpose:
 import time
 import threading
 import queue
-import random
 
 class ServerProfile:
     """
@@ -92,7 +91,7 @@ class FakeServerEngine:
     def _process_loop(self):
         while self.running:
             try:
-                ts = self.request_queue.get(timeout=0.1)
+                self.request_queue.get(timeout=0.1)
             except queue.Empty:
                 continue
 

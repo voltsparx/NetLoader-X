@@ -15,7 +15,6 @@ Contact : voltsparx@gmail.com
 
 import os
 import sys
-import time
 from typing import Dict, Any
 
 from ui.banner import show_banner
@@ -61,6 +60,9 @@ PROFILE_MENU = [
     ("Burst Traffic Pattern", "burst"),
     ("Slow Client Behavior", "slow"),
     ("Wave / Pulsing Load", "wave"),
+    ("Retry Storm Behavior", "retry"),
+    ("Cache Bypass Pattern", "cache"),
+    ("Mixed Multi-Vector Pattern", "mixed"),
     ("Back", "back")
 ]
 
@@ -185,7 +187,7 @@ def confirm_start(state: MenuState) -> bool:
     print(colorize(f"Profile       : {state.attack_profile}", "info"))
     print(colorize(f"Duration      : {state.config['duration']} sec", "info"))
     print(colorize(f"Threads       : {state.config['threads']}", "info"))
-    print(colorize(f"Target        : localhost (simulated)", "info"))
+    print(colorize("Target        : localhost (simulated)", "info"))
 
     print("")
     print(colorize("[!] This is a LOCAL SIMULATION ONLY.", "warning"))
@@ -258,7 +260,10 @@ def main_menu():
         "http": "1",
         "burst": "2", 
         "slow": "3",
-        "wave": "4"
+        "wave": "4",
+        "retry": "5",
+        "cache": "6",
+        "mixed": "7",
     }
     
     return profile_map.get(state.attack_profile, "1")

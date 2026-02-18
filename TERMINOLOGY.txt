@@ -1,0 +1,81 @@
+NetLoader-X Terminology
+======================
+
+Tick
+  One simulation step (usually 1 second). Each tick produces one snapshot
+  in the exported metrics and reports.
+
+Snapshot
+  A dictionary of simulated metrics captured at a tick (queue depth, latency,
+  error rate, etc.).
+
+Virtual clients / Threads
+  An abstract knob controlling simulated demand. These are NOT real network
+  connections and NOT a real traffic generator.
+
+Event
+  A simulated request arrival. Events are numbers used to drive the model.
+
+Generated events
+  Events produced by the scheduler/pattern for a tick.
+
+Dropped events
+  Events capped by safety limiters and not injected into the model.
+
+Retry events
+  Extra events added to simulate client retries when the simulated error rate
+  increases (retry amplification behavior).
+
+RPS (requests_per_second)
+  Simulated throughput, computed from completed work divided by tick duration.
+
+Latency (latency_ms)
+  Simulated response time in milliseconds.
+
+Error rate (error_rate)
+  Simulated fraction of events that fail (0.0 to 1.0). Reports may show this
+  as a percent.
+
+Queue depth (queue_depth)
+  Simulated backlog waiting to be processed.
+
+Queue limit
+  Maximum queue depth before simulated rejections happen.
+
+CPU pressure (cpu_pressure)
+  Synthetic saturation indicator (0.0 to 1.0).
+
+Degraded
+  A tick where the model considers the service under stress (high pressure
+  or high queue). Expect latency and errors to rise.
+
+Crashed
+  A tick where the model considers the service down. Error rate is forced to
+  100% until recovery conditions are met.
+
+Slow clients (slow_workers / slow_clients)
+  Simulated long-lived pressure that occupies capacity for longer.
+
+Attack profile
+  A predefined demand behavior used by the engine:
+  HTTP, BURST, SLOW, WAVE, RETRY, CACHE, MIXED.
+
+Scheduler
+  How demand changes over time (ramp, wave, burst, stair-step, etc.).
+
+Chaos / Fault injection
+  Random perturbations applied during a run (latency spikes, higher error rate,
+  reduced capacity). Still fully offline and simulated.
+
+Cluster mode
+  A multi-backend simulation with a load balancer, backend servers, and a
+  database/cache layer.
+
+Report
+  Exported artifacts under outputs/... including metrics.json/csv/html and
+  summary.txt.
+
+Safety caps
+  Hard limits in core/config.py that keep the framework defensive and
+  non-networked.
+

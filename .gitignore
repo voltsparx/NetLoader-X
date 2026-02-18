@@ -67,6 +67,7 @@ outputs/
 *.html
 *.csv
 *.json
+!cluster-config-example.json
 !core/config.py
 !utils/html_report.py
 

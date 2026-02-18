@@ -48,7 +48,7 @@ class GlobalConfig:
     Centralized configuration for simulation engine.
     """
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-    ALLOWED_PORT_RANGE = (1024, 65535)
+    ALLOWED_PORT_RANGE = (1024, 65534)
     OUTPUT_DIR = "outputs"
     
     def __init__(self):
@@ -89,10 +89,10 @@ DEFAULT_REPORT_FORMATS = [
 
 HTML_REPORT_SETTINGS = {
     "theme": "blue",
+    # HTML reports include lightweight SVG/CSS charts by default.
     "include_graphs": True,
     "include_summary": True,
     "include_timeline": True,
-    "graph_backend": "plotly",   # conceptual, not imported here
 }
 
 # ==================================================
@@ -222,6 +222,19 @@ def ensure_output_dirs(run_id: str) -> str:
         os.makedirs(os.path.join(base, fmt), exist_ok=True)
 
     return base
+
+
+def set_output_dir(output_dir: str) -> str:
+    """
+    Set the base output directory for reports/logs.
+
+    Accepts relative or absolute paths. Returns the configured value.
+    """
+    out = str(output_dir or "").strip() or "outputs"
+    GlobalConfig.OUTPUT_DIR = out
+    global BASE_OUTPUT_DIR
+    BASE_OUTPUT_DIR = out
+    return out
 
 
 # ==================================================

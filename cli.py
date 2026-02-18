@@ -1,547 +1,278 @@
 """
-NetLoader-X :: Command-Line Interface (CLI)
-================================================
-Modern argparse-based CLI for interactive and batch execution.
-
-Supports:
-  - Interactive menu mode (default)
-  - Quick-test mode for demo
-  - Custom profiles from YAML/JSON
-  - Headless batch execution
-  - Guided labs mode
-  - Report-only mode
-
-Metadata imported from core.metadata
+NetLoader-X :: Command-Line Interface
 """
 
 import argparse
-import sys
-import os
 from pathlib import Path
-from core.metadata import PROJECT_NAME, VERSION_STRING, PROJECT_TAGLINE
+
+from core.metadata import PROJECT_NAME, PROJECT_TAGLINE, VERSION_STRING
 
 
-# Usage examples for help text
-USAGE_EXAMPLES = f"""
+USAGE_EXAMPLES = """
 Examples:
-
-  For beginners (interactive menu):
-    python netloader-x.py
-
-  For quick demo (30-second test):
-    python netloader-x.py quick-test
-
-  To learn with guided labs:
-    python netloader-x.py labs --list
-    python netloader-x.py labs --lab 1
-
-  For automation (CLI mode):
-    python netloader-x.py run --profile http --threads 50 --duration 60
-    python netloader-x.py run --profile burst --batch
-
-  For cluster simulation (load balancer + backends):
-    python netloader-x.py cluster --config cluster-config.yaml
-    python netloader-x.py cluster --config cluster-config.yaml --algorithm least-connections
-    python netloader-x.py cluster --config cluster-config.yaml --threads 200 --batch
-
-  To verify configuration:
-    python netloader-x.py validate --detailed
-
-  For real-time web dashboard (requires Flask):
-    python netloader-x.py web --port 8080
-    # Then open http://127.0.0.1:8080 in your browser
-
-  To see version:
-    python netloader-x.py --version
+  python netloader-x.py
+  python netloader-x.py quick-test --profile mixed --short
+  python netloader-x.py run --profile retry --threads 80 --duration 90 --batch
+  python netloader-x.py labs --list
+  python netloader-x.py cluster --config cluster-config-example.yaml
+  python netloader-x.py validate --detailed
 """
+
+
+PROFILE_CHOICES = ["http", "burst", "slow", "wave", "retry", "cache", "mixed"]
 
 
 class CLIParser:
     """
-    Handles all CLI argument parsing for NetLoader-X.
+    Handles argument parsing for all modes.
     """
 
     def __init__(self):
+        self._common_parser = None
         self.parser = self._build_parser()
 
     def _build_parser(self) -> argparse.ArgumentParser:
-        """
-        Construct the main argument parser with all subcommands and options.
-        """
+        # Common/global flags should work both before and after the subcommand:
+        #   python netloader-x.py --no-report quick-test ...
+        #   python netloader-x.py quick-test ... --no-report
+        common = argparse.ArgumentParser(add_help=False)
+        common.add_argument("--verbose", "-v", action="store_true", default=None, help="Enable verbose output")
+        common.add_argument("--output-dir", "-o", default=None, help="Output directory")
+        common.add_argument("--seed", type=int, help="Random seed for deterministic runs")
+        common.add_argument("--no-report", action="store_true", default=None, help="Disable report export")
+        common.add_argument(
+            "--guide",
+            action="store_true",
+            default=None,
+            help="Interactive command selection guide",
+        )
+        self._common_parser = common
+
         parser = argparse.ArgumentParser(
             prog=PROJECT_NAME,
             description=PROJECT_TAGLINE,
             epilog=USAGE_EXAMPLES,
             formatter_class=argparse.RawDescriptionHelpFormatter,
+            parents=[common],
         )
 
-        # Global options
         parser.add_argument(
             "--version",
             action="version",
             version=f"{PROJECT_NAME} {VERSION_STRING}",
-            help="Show version information"
+            help="Show version information",
         )
 
-        parser.add_argument(
-            "--verbose", "-v",
-            action="store_true",
-            help="Enable verbose logging"
-        )
-
-        parser.add_argument(
-            "--output-dir", "-o",
-            default="outputs",
-            help="Output directory for reports (default: outputs)"
-        )
-
-        parser.add_argument(
-            "--config-file", "-c",
-            type=Path,
-            help="Path to custom YAML/JSON configuration file"
-        )
-
-        parser.add_argument(
-            "--no-report",
-            action="store_true",
-            help="Skip report generation after simulation"
-        )
-
-        parser.add_argument(
-            "--seed",
-            type=int,
-            help="Set random seed for deterministic runs"
-        )
-
-        parser.add_argument(
-            "--guide",
-            action="store_true",
-            help="Interactive guide to help you choose the best method for your goals"
-        )
-
-        # Subcommands
-        subparsers = parser.add_subparsers(
-            dest="command",
-            title="Commands",
-            description="Available commands",
-            help="Command to execute"
-        )
-
-        # Run command (default behavior)
-        self._add_run_command(subparsers)
-
-        # Quick-test command
-        self._add_quicktest_command(subparsers)
-
-        # Labs command
-        self._add_labs_command(subparsers)
-
-        # Validate command
-        self._add_validate_command(subparsers)
-
-        # Report command
-        self._add_report_command(subparsers)
-
-        # Web command
-        self._add_web_command(subparsers)
-
-        # Cluster command
-        self._add_cluster_command(subparsers)
-
+        subparsers = parser.add_subparsers(dest="command", title="Commands")
+        common_parents = [common]
+        self._add_run_command(subparsers, parents=common_parents)
+        self._add_quicktest_command(subparsers, parents=common_parents)
+        self._add_labs_command(subparsers, parents=common_parents)
+        self._add_validate_command(subparsers, parents=common_parents)
+        self._add_report_command(subparsers, parents=common_parents)
+        self._add_web_command(subparsers, parents=common_parents)
+        self._add_cluster_command(subparsers, parents=common_parents)
         return parser
 
-    def _add_run_command(self, subparsers):
-        """Add the 'run' subcommand for normal simulation execution."""
+    def _add_run_command(self, subparsers, parents=None):
         run_parser = subparsers.add_parser(
             "run",
-            help="Execute a simulation (interactive or batch mode)",
-            aliases=["r"]
+            aliases=["r"],
+            help="Run simulation",
+            parents=parents or [],
         )
-
+        run_parser.add_argument("--profile", choices=PROFILE_CHOICES, help="Simulation profile")
+        run_parser.add_argument("--threads", type=int, default=50, help="Virtual client count")
+        run_parser.add_argument("--duration", type=int, default=60, help="Duration in seconds")
+        run_parser.add_argument("--batch", action="store_true", help="Run without prompts")
+        run_parser.add_argument("--no-dashboard", action="store_true", help="Disable live dashboard")
         run_parser.add_argument(
-            "--interactive", "-i",
+            "--chaos",
             action="store_true",
-            default=True,
-            help="Use interactive menu mode (default)"
+            help="Enable random fault injection during simulation",
         )
+        run_parser.add_argument("--chaos-rate", type=float, default=0.05, help="Chaos fault rate")
 
-        run_parser.add_argument(
-            "--profile",
-            choices=["http", "burst", "slow", "wave"],
-            help="Attack profile (skip menu if provided)"
-        )
-
-        run_parser.add_argument(
-            "--threads",
-            type=int,
-            default=50,
-            help="Number of virtual clients (default: 50)"
-        )
-
-        run_parser.add_argument(
-            "--duration",
-            type=int,
-            default=60,
-            help="Simulation duration in seconds (default: 60)"
-        )
-
-        run_parser.add_argument(
-            "--rate",
-            type=int,
-            help="Target request rate (RPS)"
-        )
-
-        run_parser.add_argument(
-            "--batch",
-            action="store_true",
-            help="Run without interactive prompts (requires --profile)"
-        )
-
-    def _add_quicktest_command(self, subparsers):
-        """Add the 'quick-test' subcommand for demonstration."""
+    def _add_quicktest_command(self, subparsers, parents=None):
         quicktest_parser = subparsers.add_parser(
             "quick-test",
-            help="Run a quick demo with sensible defaults",
-            aliases=["qt", "q"]
+            aliases=["qt", "q"],
+            help="Run a fast demo",
+            parents=parents or [],
         )
-
         quicktest_parser.add_argument(
             "--profile",
-            choices=["http", "burst", "slow", "wave"],
+            choices=PROFILE_CHOICES,
             default="http",
-            help="Attack profile for quick test (default: http)"
+            help="Profile for quick demo",
         )
-
+        quicktest_parser.add_argument("--short", action="store_true", help="Run 10-second demo")
+        # Back-compat: keep --skip-dashboard, but standardize on --no-dashboard everywhere.
         quicktest_parser.add_argument(
-            "--short",
-            action="store_true",
-            help="Run shorter test (10 seconds instead of 30)"
-        )
-
-        quicktest_parser.add_argument(
+            "--no-dashboard",
             "--skip-dashboard",
             action="store_true",
-            help="Don't show live dashboard"
+            dest="no_dashboard",
+            help="Disable live dashboard",
         )
 
-    def _add_labs_command(self, subparsers):
-        """Add the 'labs' subcommand for guided learning scenarios."""
+    def _add_labs_command(self, subparsers, parents=None):
         labs_parser = subparsers.add_parser(
             "labs",
-            help="Run pre-set guided learning scenarios",
-            aliases=["lab", "l"]
+            aliases=["lab", "l"],
+            help="Run guided labs",
+            parents=parents or [],
         )
-
-        labs_parser.add_argument(
-            "--list",
-            action="store_true",
-            help="List all available guided labs"
-        )
-
-        labs_parser.add_argument(
-            "--lab",
-            type=int,
-            help="Run specific lab by number"
-        )
-
+        labs_parser.add_argument("--list", action="store_true", help="List labs")
+        labs_parser.add_argument("--lab", type=int, help="Run specific lab ID")
         labs_parser.add_argument(
             "--interactive",
             action="store_true",
             default=True,
-            help="Show educational content during lab (default)"
+            help="Show educational narration",
         )
+        labs_parser.add_argument("--description-only", action="store_true")
 
-        labs_parser.add_argument(
-            "--description-only",
-            action="store_true",
-            help="Show lab description without running"
-        )
-
-    def _add_validate_command(self, subparsers):
-        """Add the 'validate' subcommand for configuration validation."""
+    def _add_validate_command(self, subparsers, parents=None):
         validate_parser = subparsers.add_parser(
             "validate",
-            help="Validate configuration and check safety constraints",
-            aliases=["check", "v"]
+            aliases=["check", "v"],
+            help="Validate configuration",
+            parents=parents or [],
         )
+        validate_parser.add_argument("--config", type=Path, help="Validate specific config file")
+        validate_parser.add_argument("--detailed", action="store_true", help="Print full config")
 
-        validate_parser.add_argument(
-            "--config",
-            type=Path,
-            help="Validate specific configuration file"
-        )
-
-        validate_parser.add_argument(
-            "--detailed",
-            action="store_true",
-            help="Show detailed validation report"
-        )
-
-    def _add_report_command(self, subparsers):
-        """Add the 'report' subcommand for report generation/analysis."""
+    def _add_report_command(self, subparsers, parents=None):
         report_parser = subparsers.add_parser(
             "report",
-            help="Generate or analyze existing simulation reports",
-            aliases=["rep", "rp"]
+            aliases=["rep", "rp"],
+            help="Analyze existing report files",
+            parents=parents or [],
         )
-
         report_parser.add_argument(
             "input_dir",
             nargs="?",
-            help="Input directory with simulation results"
+            default=None,
+            help="Input folder (defaults to --output-dir)",
         )
-
         report_parser.add_argument(
             "--format",
             choices=["html", "csv", "json", "all"],
             default="all",
-            help="Report format(s) to generate (default: all)"
         )
 
-        report_parser.add_argument(
-            "--template",
-            choices=["basic", "detailed", "minimal"],
-            default="detailed",
-            help="HTML report template style (default: detailed)"
-        )
-
-        report_parser.add_argument(
-            "--open",
-            action="store_true",
-            help="Open generated HTML report in browser"
-        )
-
-    def _add_web_command(self, subparsers):
-        """Add the 'web' subcommand for real-time web dashboard."""
+    def _add_web_command(self, subparsers, parents=None):
         web_parser = subparsers.add_parser(
             "web",
-            help="Start real-time web-based dashboard",
-            aliases=["w", "dashboard"]
+            aliases=["w", "dashboard"],
+            help="Start local web dashboard",
+            parents=parents or [],
         )
+        web_parser.add_argument("--port", type=int, default=8080)
+        web_parser.add_argument("--host", default="127.0.0.1")
+        web_parser.add_argument("--auto-open", action="store_true")
 
-        web_parser.add_argument(
-            "--port",
-            type=int,
-            default=8080,
-            help="Port for web dashboard (default: 8080)"
-        )
-
-        web_parser.add_argument(
-            "--host",
-            default="127.0.0.1",
-            help="Host to bind to (default: 127.0.0.1)"
-        )
-
-        web_parser.add_argument(
-            "--auto-open",
-            action="store_true",
-            help="Automatically open dashboard in browser"
-        )
-
-    def _add_cluster_command(self, subparsers):
-        """Add the 'cluster' subcommand for cluster simulation."""
+    def _add_cluster_command(self, subparsers, parents=None):
         cluster_parser = subparsers.add_parser(
             "cluster",
-            help="Simulate server clusters with load balancing",
-            aliases=["c", "cluster-test"]
+            aliases=["c", "cluster-test"],
+            help="Run cluster simulation mode",
+            parents=parents or [],
         )
-
-        cluster_parser.add_argument(
-            "--config",
-            type=Path,
-            required=True,
-            help="Cluster configuration file (YAML or JSON)"
-        )
-
+        cluster_parser.add_argument("--config", type=Path, required=True)
         cluster_parser.add_argument(
             "--algorithm",
-            choices=["round-robin", "least-connections", "random", "weighted-round-robin", "ip-hash"],
-            help="Override load balancer algorithm from config"
+            choices=[
+                "round-robin",
+                "least-connections",
+                "random",
+                "weighted-round-robin",
+                "ip-hash",
+            ],
         )
-
-        cluster_parser.add_argument(
-            "--threads",
-            type=int,
-            default=100,
-            help="Number of client threads (default: 100)"
-        )
-
-        cluster_parser.add_argument(
-            "--duration",
-            type=int,
-            default=60,
-            help="Simulation duration in seconds (default: 60)"
-        )
-
-        cluster_parser.add_argument(
-            "--rate",
-            type=int,
-            help="Target request rate (RPS)"
-        )
-
-        cluster_parser.add_argument(
-            "--batch",
-            action="store_true",
-            help="Run without interactive prompts"
-        )
-
-        cluster_parser.add_argument(
-            "--show-config",
-            action="store_true",
-            help="Display loaded configuration and exit"
-        )
-
-        cluster_parser.add_argument(
-            "--example-config",
-            action="store_true",
-            help="Show example cluster configuration"
-        )
+        cluster_parser.add_argument("--threads", type=int, default=100)
+        cluster_parser.add_argument("--duration", type=int, default=60)
+        cluster_parser.add_argument("--rate", type=int)
+        cluster_parser.add_argument("--batch", action="store_true")
+        cluster_parser.add_argument("--show-config", action="store_true")
+        cluster_parser.add_argument("--example-config", action="store_true")
 
     def parse(self, args=None) -> argparse.Namespace:
-        """
-        Parse command-line arguments.
+        common_ns, _ = self._common_parser.parse_known_args(args)
+        parsed = self.parser.parse_args(args)
 
-        Args:
-            args: List of arguments (default: sys.argv[1:])
+        # Reconcile duplicated global flags from root + subcommands.
+        # This preserves flags set before the subcommand even when a subparser
+        # would otherwise overwrite them with its own defaults.
+        parsed.verbose = bool(
+            getattr(common_ns, "verbose", False) or getattr(parsed, "verbose", False)
+        )
+        parsed.no_report = bool(
+            getattr(common_ns, "no_report", False) or getattr(parsed, "no_report", False)
+        )
+        parsed.guide = bool(
+            getattr(common_ns, "guide", False) or getattr(parsed, "guide", False)
+        )
 
-        Returns:
-            argparse.Namespace with parsed arguments
-        """
-        return self.parser.parse_args(args)
+        parsed.output_dir = (
+            getattr(parsed, "output_dir", None)
+            or getattr(common_ns, "output_dir", None)
+            or "outputs"
+        )
+
+        if getattr(parsed, "seed", None) is None and getattr(common_ns, "seed", None) is not None:
+            parsed.seed = common_ns.seed
+
+        return parsed
 
     def print_help(self):
-        """Print help message."""
         self.parser.print_help()
 
 
 def show_guide():
     """
-    Interactive guide to help users choose the best method for their goals.
+    Minimal interactive helper for selecting commands.
     """
     print("\n" + "=" * 70)
-    print("🧭 NetLoader-X :: Interactive Guide")
+    print("NetLoader-X Interactive Guide")
     print("=" * 70)
-    print("\nLet me help you choose the best method for your goals!\n")
+    print("\nPick your goal:\n")
 
-    # Goal selection
-    print("What's your primary goal? Select one:\n")
     goals = {
-        "1": {
-            "name": "Learn how NetLoader-X works",
-            "desc": "Interactive tutorial with explanations",
-            "recommended": "Guided Labs",
-            "commands": [
-                "python netloader-x.py labs --list  # See available labs",
-                "python netloader-x.py labs --lab 1  # Start with Lab 1"
-            ]
-        },
-        "2": {
-            "name": "Quick demo (see it in action)",
-            "desc": "30-second test with default settings",
-            "recommended": "Quick-Test Mode",
-            "commands": [
-                "python netloader-x.py quick-test  # Run standard demo",
-                "python netloader-x.py quick-test --short  # 10-second version"
-            ]
-        },
-        "3": {
-            "name": "Custom testing (hands-on control)",
-            "desc": "Configure your own simulation parameters",
-            "recommended": "Interactive Run Mode",
-            "commands": [
-                "python netloader-x.py run  # Menu-driven configuration",
-                "python netloader-x.py run -i  # Explicit interactive mode"
-            ]
-        },
-        "4": {
-            "name": "Automation (scripts/CI/CD)",
-            "desc": "Headless mode for integration into workflows",
-            "recommended": "Batch CLI Mode",
-            "commands": [
-                "python netloader-x.py run --profile http --threads 100 --duration 60 --batch",
-                "python netloader-x.py run --profile burst --rate 1000 --batch"
-            ]
-        },
-        "5": {
-            "name": "Validate before running",
-            "desc": "Check configuration and safety constraints",
-            "recommended": "Validate Command",
-            "commands": [
-                "python netloader-x.py validate --detailed",
-                "python netloader-x.py validate --config custom.yaml"
-            ]
-        },
-        "6": {
-            "name": "Analyze existing results",
-            "desc": "Generate reports from previous runs",
-            "recommended": "Report Command",
-            "commands": [
-                "python netloader-x.py report ./outputs --format html",
-                "python netloader-x.py report ./outputs --format all --open"
-            ]
-        }
+        "1": ("Learn concepts", "python netloader-x.py labs --list"),
+        "2": ("Run a quick demo", "python netloader-x.py quick-test"),
+        "3": ("Run a custom simulation", "python netloader-x.py run --profile http"),
+        "4": ("Run cluster mode", "python netloader-x.py cluster --config cluster-config-example.yaml"),
+        "5": ("Validate setup", "python netloader-x.py validate --detailed"),
     }
 
-    for key, goal in goals.items():
-        print(f"  {key}. {goal['name']}")
-        print(f"     → {goal['desc']}\n")
+    for key, (name, _) in goals.items():
+        print(f"  {key}. {name}")
 
-    # Get user selection
-    while True:
-        choice = input("Enter your choice (1-6) or 'q' to quit: ").strip().lower()
-        if choice == 'q':
-            print("\nGoodbye! 👋")
-            return
-        if choice in goals:
-            break
-        print("❌ Invalid choice. Please enter 1-6 or 'q'.\n")
+    choice = input("\nEnter 1-5 or q: ").strip().lower()
+    if choice == "q":
+        return
 
-    selected = goals[choice]
-    
-    # Display recommendation
-    print("\n" + "-" * 70)
-    print(f"✨ RECOMMENDED: {selected['recommended']}")
-    print("-" * 70 + "\n")
-    print("Here are the commands to get started:\n")
-    
-    for i, cmd in enumerate(selected['commands'], 1):
-        print(f"  {i}. {cmd}")
-    
-    print("\n💡 TIP: You can always use 'python netloader-x.py --help' for full options")
-    print("        or 'python netloader-x.py <command> --help' for command-specific help\n")
-    
-    # Offer to run a command
-    run_cmd = input("Would you like me to show the help for this command? (y/n): ").strip().lower()
-    if run_cmd == 'y':
-        if selected['recommended'] == "Guided Labs":
-            os.system("python netloader-x.py labs --help")
-        elif selected['recommended'] == "Quick-Test Mode":
-            os.system("python netloader-x.py quick-test --help")
-        elif selected['recommended'] == "Interactive Run Mode":
-            os.system("python netloader-x.py run --help")
-        elif selected['recommended'] == "Batch CLI Mode":
-            os.system("python netloader-x.py run --help")
-        elif selected['recommended'] == "Validate Command":
-            os.system("python netloader-x.py validate --help")
-        elif selected['recommended'] == "Report Command":
-            os.system("python netloader-x.py report --help")
+    selected = goals.get(choice)
+    if not selected:
+        print("Invalid choice")
+        return
+
+    print("\nRecommended command:")
+    print(selected[1])
 
 
 def main():
-    """
-    Entry point for CLI testing.
-    """
     cli = CLIParser()
     args = cli.parse()
-
-    # Check for guide flag first (takes precedence)
     if args.guide:
         show_guide()
         return
 
     if args.command is None:
-        # Default: interactive menu mode
         from ui.menu import run_menu
+
         run_menu()
     else:
         print(f"Command: {args.command}")

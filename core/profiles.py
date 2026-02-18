@@ -1,52 +1,105 @@
-import time
-import random
-from core.limiter import RateLimiter
+"""
+NetLoader-X profile catalog.
+Profiles define scheduler and behavior defaults for abstract simulations.
+"""
+
+from dataclasses import dataclass
+from typing import Dict
+
+
+@dataclass(frozen=True)
+class AttackProfile:
+    key: str
+    label: str
+    scheduler: str
+    base_multiplier: float
+    max_multiplier: float
+    default_duration: int
+
+
+PROFILE_CATALOG: Dict[str, AttackProfile] = {
+    "HTTP": AttackProfile(
+        key="HTTP",
+        label="HTTP Steady",
+        scheduler="ramp",
+        base_multiplier=16.0,
+        max_multiplier=32.0,
+        default_duration=60,
+    ),
+    "BURST": AttackProfile(
+        key="BURST",
+        label="Burst Spikes",
+        scheduler="burst",
+        base_multiplier=14.0,
+        max_multiplier=42.0,
+        default_duration=60,
+    ),
+    "SLOW": AttackProfile(
+        key="SLOW",
+        label="Slow Connection Hold",
+        scheduler="slow",
+        base_multiplier=8.0,
+        max_multiplier=22.0,
+        default_duration=60,
+    ),
+    "WAVE": AttackProfile(
+        key="WAVE",
+        label="Wave Demand",
+        scheduler="wave",
+        base_multiplier=10.0,
+        max_multiplier=30.0,
+        default_duration=75,
+    ),
+    "RETRY": AttackProfile(
+        key="RETRY",
+        label="Retry Storm",
+        scheduler="burst",
+        base_multiplier=12.0,
+        max_multiplier=40.0,
+        default_duration=75,
+    ),
+    "CACHE": AttackProfile(
+        key="CACHE",
+        label="Cache Bypass",
+        scheduler="wave",
+        base_multiplier=11.0,
+        max_multiplier=34.0,
+        default_duration=75,
+    ),
+    "MIXED": AttackProfile(
+        key="MIXED",
+        label="Mixed Vector",
+        scheduler="stair",
+        base_multiplier=13.0,
+        max_multiplier=45.0,
+        default_duration=90,
+    ),
+}
+
+
+def get_profile(name: str) -> AttackProfile:
+    return PROFILE_CATALOG.get(name.upper(), PROFILE_CATALOG["HTTP"])
+
 
 class BaseProfile:
     name = "BASE"
     description = ""
-
-    def run(self, engine, metrics):
-        raise NotImplementedError
+    profile_key = "HTTP"
 
 
 class HTTPSteady(BaseProfile):
     name = "HTTP_STEADY"
-    description = "Constant request rate"
-
-    def run(self, engine, metrics):
-        limiter = RateLimiter(engine.config.max_rps)
-        while engine.running:
-            limiter.wait()
-            metrics.record_request(
-                success=True,
-                latency=random.uniform(20, 80)
-            )
-            time.sleep(0.01)
+    description = "Constant request pressure"
+    profile_key = "HTTP"
 
 
 class HTTPBurst(BaseProfile):
     name = "HTTP_BURST"
     description = "Short bursts of traffic"
-
-    def run(self, engine, metrics):
-        while engine.running:
-            for _ in range(engine.config.burst_size):
-                metrics.record_request(
-                    success=True,
-                    latency=random.uniform(30, 150)
-                )
-            time.sleep(engine.config.burst_cooldown)
+    profile_key = "BURST"
 
 
 class SlowClient(BaseProfile):
     name = "SLOW_CLIENT"
-    description = "Slow header/body transmission"
-
-    def run(self, engine, metrics):
-        metrics.record_connection(opened=True)
-        start = time.time()
-        while engine.running and time.time() - start < engine.config.slow_hold_time:
-            metrics.record_request(success=True, latency=500)
-            time.sleep(engine.config.slow_chunk_delay)
-        metrics.record_connection(closed=True)
+    description = "Long-lived connection simulation"
+    profile_key = "SLOW"

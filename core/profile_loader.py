@@ -11,10 +11,9 @@ Contact : voltsparx@gmail.com
 """
 
 import json
-import sys
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 
 @dataclass
