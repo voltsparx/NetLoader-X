@@ -74,6 +74,30 @@ PROFILE_CATALOG: Dict[str, AttackProfile] = {
         max_multiplier=45.0,
         default_duration=90,
     ),
+    "SPIKE": AttackProfile(
+        key="SPIKE",
+        label="Flash Spike",
+        scheduler="burst",
+        base_multiplier=18.0,
+        max_multiplier=56.0,
+        default_duration=60,
+    ),
+    "BROWNOUT": AttackProfile(
+        key="BROWNOUT",
+        label="Brownout Drift",
+        scheduler="slow",
+        base_multiplier=9.0,
+        max_multiplier=24.0,
+        default_duration=75,
+    ),
+    "RECOVERY": AttackProfile(
+        key="RECOVERY",
+        label="Recovery Curve",
+        scheduler="stair",
+        base_multiplier=10.0,
+        max_multiplier=28.0,
+        default_duration=80,
+    ),
 }
 
 

@@ -9,10 +9,10 @@ PROJECT_TAGLINE = "Defensive Load & Failure Simulation Framework"
 PROJECT_DESCRIPTION = "Safe, educational tool for stress-testing and resilience learning"
 
 # Version Information
-VERSION_MAJOR = 3
-VERSION_MINOR = 7
+VERSION_MAJOR = 4
+VERSION_MINOR = 0
 VERSION_PATCH = 0
-# If patch is 0, use a short "major.minor" version for cleaner display (v3.7).
+# If patch is 0, use a short "major.minor" version for cleaner display (v4.0).
 VERSION_FULL = (
     f"{VERSION_MAJOR}.{VERSION_MINOR}"
     if VERSION_PATCH == 0
@@ -32,7 +32,7 @@ LICENSE = "Educational & Defensive Simulation Only"
 
 # Status
 STATUS = "PRODUCTION-READY"
-LAST_UPDATED = "2026-02-18"
+LAST_UPDATED = "2026-02-25"
 
 # Safety Information
 SAFETY_MODE = "SAFE / LOCAL / DEFENSIVE ONLY"

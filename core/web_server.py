@@ -13,6 +13,7 @@ import core.config as cfg
 try:
     from flask import Flask, jsonify, render_template_string, send_file
     from flask_cors import CORS
+    from werkzeug.serving import make_server
 
     HAS_FLASK = True
 except ImportError:
@@ -35,6 +36,8 @@ class WebDashboard:
         self.app = self._build_app()
         self.server_thread = None
         self.is_running = False
+        self._server_lock = threading.Lock()
+        self._http_server = None
 
     def _build_app(self):
         app = Flask(__name__)
@@ -101,18 +104,31 @@ class WebDashboard:
 
     def _run_server(self):
         try:
-            self.app.run(
-                host=self.host,
-                port=self.port,
-                debug=False,
-                use_reloader=False,
-                threaded=True,
-            )
+            with self._server_lock:
+                self._http_server = make_server(self.host, self.port, self.app, threaded=True)
+            self._http_server.serve_forever()
         except Exception as exc:
             print(f"Web server error: {exc}")
+        finally:
+            with self._server_lock:
+                if self._http_server is not None:
+                    try:
+                        self._http_server.server_close()
+                    except Exception:
+                        pass
+                    self._http_server = None
             self.is_running = False
 
     def stop(self):
+        with self._server_lock:
+            server = self._http_server
+        if server is not None:
+            try:
+                server.shutdown()
+            except Exception:
+                pass
+        if self.server_thread and self.server_thread.is_alive():
+            self.server_thread.join(timeout=2.0)
         self.is_running = False
 
     @staticmethod

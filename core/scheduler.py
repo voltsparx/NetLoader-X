@@ -268,23 +268,22 @@ class Scheduler:
                 return None
 
             if self.paused:
-                time.sleep(self.tick_interval)
-                return {
+                payload = {
                     "tick": self.tick,
                     "rate": 0,
                     "paused": True
                 }
+            else:
+                rate = self.profile.rate_at(self.tick)
 
-            rate = self.profile.rate_at(self.tick)
+                payload = {
+                    "tick": self.tick,
+                    "rate": rate,
+                    "paused": False,
+                    "timestamp": time.time(),
+                }
 
-            payload = {
-                "tick": self.tick,
-                "rate": rate,
-                "paused": False,
-                "timestamp": time.time(),
-            }
-
-            self.tick += 1
+                self.tick += 1
 
         time.sleep(self.tick_interval)
         return payload

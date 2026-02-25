@@ -1,4 +1,4 @@
-NetLoader-X v3.7 - Usage
+NetLoader-X v4.0 - Usage
 ========================
 
 NetLoader-X is a safe, offline simulation framework for learning how systems
@@ -23,6 +23,8 @@ Optional dependencies (only for extra features)
   Install: pip install flask flask-cors
 - pytest: required only to run the pytest test suite
   Install: pip install pytest
+- pyinstaller: required only to build standalone binaries
+  Install: pip install -r requirements-build.txt
 
 
 Run Modes (Common Commands)
@@ -57,8 +59,13 @@ Run Modes (Common Commands)
    python netloader-x.py cluster --config cluster-config-example.yaml
 
 7) Analyze existing reports
-   python netloader-x.py report outputs
+   python netloader-x.py report "$HOME/netloader-x-output"
    python netloader-x.py report --format all
+
+8) Build standalone binary (native on each OS)
+   python scripts/install-netloader-x-binary.py --mode test --clean-dist --verify
+   python scripts/install-netloader-x-binary.py --mode install --clean-dist
+   (See docs/BinaryBuild.md for details)
 
 
 Global Flags
@@ -67,7 +74,7 @@ These flags work both before OR after the subcommand:
   python netloader-x.py --no-report quick-test --short
   python netloader-x.py quick-test --short --no-report
 
-- --output-dir, -o : base folder for report exports (default: outputs)
+- --output-dir, -o : base folder for report exports (default: $HOME/netloader-x-output)
 - --seed           : random seed for deterministic runs
 - --no-report      : do not write report files
 - --verbose, -v    : extra logs
@@ -80,7 +87,7 @@ Report Output
 After a run (unless --no-report is used), NetLoader-X writes a folder under the
 output directory, for example:
 
-  outputs/HTTP-1700000000_2026-02-18_22-10-30/
+  $HOME/netloader-x-output/HTTP-1700000000_2026-02-18_22-10-30/
 
 Files inside:
 - metrics.json  : full raw ticks + aggregates + series
@@ -94,4 +101,3 @@ Safety Notes
 - Localhost-only simulation (no external targets)
 - No sockets, packets, or raw traffic features
 - Hard safety caps are enforced at startup (see core/config.py)
-

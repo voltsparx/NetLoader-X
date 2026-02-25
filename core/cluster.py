@@ -159,14 +159,15 @@ class LoadBalancer:
             elif self.algorithm == LoadBalancerAlgorithm.WEIGHTED_ROUND_ROBIN:
                 # Weight by worker count (stored in server.workers)
                 total_weight = sum(
-                    getattr(server, 'workers', 50) for _, server in self.backends
+                    getattr(server, "worker_count", getattr(server, "workers", 50))
+                    for _, server in self.backends
                 )
                 idx = self.current_index % total_weight
                 self.current_index += 1
                 
                 cumulative = 0
                 for i, (name, server) in enumerate(self.backends):
-                    weight = getattr(server, 'workers', 50)
+                    weight = getattr(server, "worker_count", getattr(server, "workers", 50))
                     cumulative += weight
                     if idx < cumulative:
                         return self.backends[i]
@@ -261,8 +262,7 @@ class ServerCluster:
         )
 
         # Create server instance
-        server = FakeServerEngine(profile)
-        server.workers = workers
+        server = FakeServerEngine(profile, worker_count=workers)
         server.start()
 
         self.backends[name] = server

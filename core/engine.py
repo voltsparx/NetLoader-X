@@ -8,7 +8,8 @@ import time
 from typing import Dict
 
 from core.chaos_engineering import ChaosInjector
-from core.config import GlobalConfig, SAFETY_CAPS
+from core.config import GlobalConfig, USER_TUNABLE_LIMITS
+from core.extensions import ExtensionPipeline, parse_name_list
 from core.limiter import SafetyLimiter
 from core.metrics import MetricsCollector
 from core.profiles import get_profile
@@ -46,6 +47,12 @@ class Engine:
         self.tick_interval = 1.0
         self.slow_client_ratio = 0.1
         self.burst_factor = 1.0
+        self.rate_override = None
+        self.jitter_scale = 1.0
+        self.server_overrides = {}
+        self.plugin_names = []
+        self.filter_names = []
+        self.extensions = ExtensionPipeline()
         self.current_tick = 0
         self.last_error_rate = 0.0
 
@@ -60,30 +67,74 @@ class Engine:
         attack_profile: str,
         threads: int = 50,
         duration: int = 60,
+        rate: int = None,
+        jitter: float = None,
         slow_client_ratio: float = 0.1,
         burst_factor: float = 1.0,
+        queue_limit: int = None,
+        timeout_ms: int = None,
+        crash_threshold: float = None,
+        recovery_rate: float = None,
+        error_floor: float = None,
+        plugins=None,
+        filters=None,
+        nano_ai: bool = False,
         seed: int = None,
         chaos_enabled: bool = False,
         chaos_fault_rate: float = 0.0,
     ):
-        max_clients = SAFETY_CAPS["MAX_VIRTUAL_CLIENTS"]
-        max_duration = SAFETY_CAPS["MAX_SIMULATION_TIME_SEC"]
-
-        threads = max(1, min(int(threads), max_clients))
-        duration = max(1, min(int(duration), max_duration))
+        threads = int(
+            self._clamp(
+                threads,
+                USER_TUNABLE_LIMITS["threads"]["min"],
+                USER_TUNABLE_LIMITS["threads"]["max"],
+            )
+        )
+        duration = int(
+            self._clamp(
+                duration,
+                USER_TUNABLE_LIMITS["duration"]["min"],
+                USER_TUNABLE_LIMITS["duration"]["max"],
+            )
+        )
 
         self.target_profile = profile
-        self.server = LocalhostSimulator(profile)
+        self.server_overrides = {
+            "queue_limit": int(self._clamp(queue_limit, USER_TUNABLE_LIMITS["queue_limit"]["min"], USER_TUNABLE_LIMITS["queue_limit"]["max"])) if queue_limit is not None else None,
+            "timeout_ms": int(self._clamp(timeout_ms, USER_TUNABLE_LIMITS["timeout_ms"]["min"], USER_TUNABLE_LIMITS["timeout_ms"]["max"])) if timeout_ms is not None else None,
+            "crash_threshold": float(self._clamp(crash_threshold, USER_TUNABLE_LIMITS["crash_threshold"]["min"], USER_TUNABLE_LIMITS["crash_threshold"]["max"])) if crash_threshold is not None else None,
+            "recovery_rate": float(self._clamp(recovery_rate, USER_TUNABLE_LIMITS["recovery_rate"]["min"], USER_TUNABLE_LIMITS["recovery_rate"]["max"])) if recovery_rate is not None else None,
+            "error_floor": float(self._clamp(error_floor, USER_TUNABLE_LIMITS["error_floor"]["min"], USER_TUNABLE_LIMITS["error_floor"]["max"])) if error_floor is not None else None,
+        }
+        self.server_overrides = {k: v for k, v in self.server_overrides.items() if v is not None}
+
+        self.server = LocalhostSimulator(profile, overrides=self.server_overrides)
         self.server.reset()
 
         self.attack_profile = attack_profile.upper()
         self.threads = threads
         self.duration = duration
+        self.rate_override = (
+            int(self._clamp(rate, USER_TUNABLE_LIMITS["rate"]["min"], USER_TUNABLE_LIMITS["rate"]["max"]))
+            if rate is not None
+            else None
+        )
+        self.jitter_scale = (
+            float(self._clamp(jitter, USER_TUNABLE_LIMITS["jitter"]["min"], USER_TUNABLE_LIMITS["jitter"]["max"])) / 0.10
+            if jitter is not None
+            else 1.0
+        )
         self.slow_client_ratio = max(0.0, min(1.0, float(slow_client_ratio)))
         self.burst_factor = max(0.1, min(5.0, float(burst_factor)))
         self.attack_name = f"{self.attack_profile}-{int(time.time())}"
         self.current_tick = 0
         self.last_error_rate = 0.0
+
+        self.plugin_names = parse_name_list(plugins)
+        self.filter_names = parse_name_list(filters)
+        if nano_ai and "nano-coach" not in self.plugin_names:
+            self.plugin_names.append("nano-coach")
+        self.extensions = ExtensionPipeline(self.plugin_names, self.filter_names)
 
         if seed is not None:
             self.random.seed(seed)
@@ -100,10 +151,26 @@ class Engine:
         )
         self.metrics = MetricsCollector()
 
+    @staticmethod
+    def _clamp(value, low, high):
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            value = float(low)
+        return max(float(low), min(float(high), value))
+
     def _build_schedule_profile(self, seed: int = None):
         profile = get_profile(self.attack_profile)
-        base_rate = max(1, int(self.threads * profile.base_multiplier))
-        max_rate = max(base_rate + 1, int(self.threads * profile.max_multiplier))
+        if self.rate_override is not None:
+            base_rate = max(1, int(self.rate_override))
+            ratio = max(1.05, profile.max_multiplier / max(0.1, profile.base_multiplier))
+            max_rate = max(base_rate + 1, int(base_rate * ratio))
+        else:
+            base_rate = max(1, int(self.threads * profile.base_multiplier))
+            max_rate = max(base_rate + 1, int(self.threads * profile.max_multiplier))
+
+        def _scaled_jitter(base_jitter: float) -> float:
+            return max(0.0, min(0.5, base_jitter * self.jitter_scale))
 
         if profile.scheduler == "burst":
             return BurstProfile(
@@ -112,7 +179,7 @@ class Engine:
                 duration=self.duration,
                 burst_interval=8,
                 burst_length=3,
-                jitter=0.10,
+                jitter=_scaled_jitter(0.10),
                 seed=seed,
             )
         if profile.scheduler == "slow":
@@ -121,7 +188,7 @@ class Engine:
                 max_rate=max_rate,
                 duration=self.duration,
                 hold_factor=1.6,
-                jitter=0.05,
+                jitter=_scaled_jitter(0.05),
                 seed=seed,
             )
         if profile.scheduler == "wave":
@@ -130,7 +197,7 @@ class Engine:
                 max_rate=max_rate,
                 duration=self.duration,
                 period=14,
-                jitter=0.08,
+                jitter=_scaled_jitter(0.08),
                 seed=seed,
             )
         if profile.scheduler == "stair":
@@ -139,14 +206,14 @@ class Engine:
                 max_rate=max_rate,
                 duration=self.duration,
                 steps=6,
-                jitter=0.10,
+                jitter=_scaled_jitter(0.10),
                 seed=seed,
             )
         return RampProfile(
             base_rate=base_rate,
             max_rate=max_rate,
             duration=self.duration,
-            jitter=0.06,
+            jitter=_scaled_jitter(0.06),
             seed=seed,
         )
 
@@ -158,7 +225,8 @@ class Engine:
         scheduled = max(1, scheduled)
 
         pattern = get_pattern(self.attack_profile)
-        variation = self.random.uniform(1 - pattern.jitter, 1 + pattern.jitter)
+        pattern_jitter = max(0.0, min(0.5, pattern.jitter * self.jitter_scale))
+        variation = self.random.uniform(1 - pattern_jitter, 1 + pattern_jitter)
         events = int(scheduled * pattern.event_multiplier * variation * self.burst_factor)
         events = max(1, events)
 
@@ -186,6 +254,9 @@ class Engine:
         if self.chaos.enabled:
             snapshot = self.chaos.inject_fault(snapshot)
 
+        if self.extensions.plugins or self.extensions.filters:
+            snapshot = self.extensions.apply(snapshot)
+
         snapshot["timestamp"] = round(time.time(), 4)
         snapshot["tick"] = self.current_tick
         snapshot["attack_name"] = self.attack_name
@@ -194,10 +265,14 @@ class Engine:
         snapshot["threads"] = self.threads
         snapshot["duration"] = self.duration
         snapshot["planned_rate"] = scheduled
+        snapshot["configured_rate"] = self.rate_override if self.rate_override is not None else 0
+        snapshot["configured_jitter"] = round(max(0.0, min(0.5, 0.10 * self.jitter_scale)), 4)
         snapshot["generated_events"] = events
         snapshot["dropped_events"] = dropped_events
         snapshot["slow_clients"] = slow_clients
         snapshot["retry_events"] = retry_events
+        snapshot["enabled_plugins"] = ",".join(self.plugin_names)
+        snapshot["enabled_filters"] = ",".join(self.filter_names)
         snapshot["rps"] = snapshot.get("requests_per_second", 0)
         snapshot["latency"] = snapshot.get("latency_ms", 0)
         snapshot["active_clients"] = snapshot.get("active_workers", 0) + snapshot.get(

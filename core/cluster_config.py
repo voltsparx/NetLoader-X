@@ -22,8 +22,11 @@ Example cluster-config.yaml:
 """
 
 import json
+import copy
 from typing import Dict, Any
 from pathlib import Path
+
+from core.config import SAFETY_CAPS
 
 try:
     import yaml
@@ -34,6 +37,9 @@ except ImportError:
 
 class ClusterConfigParser:
     """Parse and validate cluster configuration files"""
+
+    MAX_BACKENDS = 128
+    MAX_DB_POOL = 50_000
 
     # Default configuration
     DEFAULT_CONFIG = {
@@ -77,10 +83,10 @@ class ClusterConfigParser:
                     "PyYAML is required for YAML config files.\n"
                     "Install with: pip install pyyaml"
                 )
-            with open(path, 'r') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
         elif path.suffix == ".json":
-            with open(path, 'r') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 config = json.load(f)
         else:
             raise ValueError("Config file must be .yaml, .yml, or .json")
@@ -149,6 +155,10 @@ class ClusterConfigParser:
 
         if len(backends) == 0:
             raise ValueError("At least one backend must be configured")
+        if len(backends) > ClusterConfigParser.MAX_BACKENDS:
+            raise ValueError(
+                f"Backends cannot exceed {ClusterConfigParser.MAX_BACKENDS}"
+            )
 
         validated_backends = []
         for i, backend in enumerate(backends):
@@ -161,8 +171,14 @@ class ClusterConfigParser:
         # Validate database section
         db_config = config.get("database", {})
         pool_size = db_config.get("connection_pool", 20)
-        if not isinstance(pool_size, int) or pool_size < 1:
-            raise ValueError("connection_pool must be a positive integer")
+        if (
+            not isinstance(pool_size, int)
+            or pool_size < 1
+            or pool_size > ClusterConfigParser.MAX_DB_POOL
+        ):
+            raise ValueError(
+                f"connection_pool must be between 1 and {ClusterConfigParser.MAX_DB_POOL}"
+            )
 
         cache_enabled = db_config.get("cache_enabled", False)
         if not isinstance(cache_enabled, bool):
@@ -190,16 +206,18 @@ class ClusterConfigParser:
 
         # Validate workers
         workers = backend.get("workers", 50)
-        if not isinstance(workers, int) or workers < 1:
+        max_workers = SAFETY_CAPS["MAX_VIRTUAL_CLIENTS"]
+        if not isinstance(workers, int) or workers < 1 or workers > max_workers:
             raise ValueError(
-                f"Backend '{name}' workers must be a positive integer"
+                f"Backend '{name}' workers must be between 1 and {max_workers}"
             )
 
         # Validate queue size
         max_queue = backend.get("max_queue", 100)
-        if not isinstance(max_queue, int) or max_queue < 1:
+        max_events = SAFETY_CAPS["MAX_EVENTS_PER_SECOND"]
+        if not isinstance(max_queue, int) or max_queue < 1 or max_queue > max_events:
             raise ValueError(
-                f"Backend '{name}' max_queue must be a positive integer"
+                f"Backend '{name}' max_queue must be between 1 and {max_events}"
             )
 
         # Validate latency parameters
@@ -238,7 +256,7 @@ class ClusterConfigParser:
     @staticmethod
     def get_default_config() -> Dict[str, Any]:
         """Get default cluster configuration"""
-        return ClusterConfigParser.DEFAULT_CONFIG.copy()
+        return copy.deepcopy(ClusterConfigParser.DEFAULT_CONFIG)
 
     @staticmethod
     def create_example_yaml() -> str:

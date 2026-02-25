@@ -74,6 +74,30 @@ PATTERNS: Dict[str, PatternTuning] = {
         retry_bias=0.16,
         jitter=0.20,
     ),
+    "SPIKE": PatternTuning(
+        name="SPIKE",
+        description="Short flash-crowd spikes with rapid queue growth",
+        event_multiplier=1.55,
+        slow_ratio=0.04,
+        retry_bias=0.10,
+        jitter=0.22,
+    ),
+    "BROWNOUT": PatternTuning(
+        name="BROWNOUT",
+        description="Sustained partial-service degradation and error drift",
+        event_multiplier=0.95,
+        slow_ratio=0.16,
+        retry_bias=0.14,
+        jitter=0.09,
+    ),
+    "RECOVERY": PatternTuning(
+        name="RECOVERY",
+        description="Load-and-recover cycle to study stabilization windows",
+        event_multiplier=1.05,
+        slow_ratio=0.12,
+        retry_bias=0.12,
+        jitter=0.14,
+    ),
 }
 
 

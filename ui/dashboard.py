@@ -37,8 +37,9 @@ class LiveDashboard:
     readable, SOC-style layout.
     """
 
-    def __init__(self, metrics_engine):
+    def __init__(self, metrics_engine, show_header_banner: bool = False):
         self.metrics = metrics_engine
+        self.show_header_banner = bool(show_header_banner)
         self.running = threading.Event()
         self.history = {
             "rps": deque(maxlen=ROLLING_WINDOW),
@@ -85,7 +86,8 @@ class LiveDashboard:
 
     def _render(self, snap):
         self._clear()
-        show_banner()
+        if self.show_header_banner:
+            show_banner()
 
         print(colorize("\n[ Live Simulation Dashboard ]", "primary"))
         print(colorize("=" * 60, "primary"))
@@ -183,7 +185,7 @@ def live_dashboard(engine):
     """
     Start a live dashboard display for an engine.
     """
-    dashboard = LiveDashboard(engine.metrics)
+    dashboard = LiveDashboard(engine.metrics, show_header_banner=False)
     dashboard.start()
     
     try:

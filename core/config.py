@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 import os
 import datetime
+from core.user_settings import get_default_output_dir
 
 # Import metadata from dedicated module
 from core.metadata import (
@@ -49,7 +50,7 @@ class GlobalConfig:
     """
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
     ALLOWED_PORT_RANGE = (1024, 65534)
-    OUTPUT_DIR = "outputs"
+    OUTPUT_DIR = get_default_output_dir()
     
     def __init__(self):
         self.max_rps = 50000
@@ -79,7 +80,7 @@ SAFETY_CAPS = {
 # OUTPUT & REPORTING
 # ==================================================
 
-BASE_OUTPUT_DIR = "outputs"
+BASE_OUTPUT_DIR = get_default_output_dir()
 
 DEFAULT_REPORT_FORMATS = [
     "csv",
@@ -117,6 +118,22 @@ LIMITER_DEFAULTS = {
     "ramp_down_seconds": 20,
     "burst_multiplier": 2.0,
     "cooldown_seconds": 15,
+}
+
+# ==================================================
+# USER TUNABLE SAFETY LOCKS
+# ==================================================
+
+USER_TUNABLE_LIMITS = {
+    "threads": {"min": 1, "max": 5000, "step": 5},
+    "duration": {"min": 5, "max": 900, "step": 5},
+    "rate": {"min": 1, "max": 50000, "step": 100},
+    "jitter": {"min": 0.0, "max": 0.5, "step": 0.01},
+    "queue_limit": {"min": 25, "max": 5000, "step": 25},
+    "timeout_ms": {"min": 200, "max": 10000, "step": 100},
+    "crash_threshold": {"min": 0.70, "max": 0.99, "step": 0.01},
+    "recovery_rate": {"min": 0.01, "max": 0.20, "step": 0.01},
+    "error_floor": {"min": 0.0, "max": 0.20, "step": 0.01},
 }
 
 # ==================================================
@@ -230,7 +247,7 @@ def set_output_dir(output_dir: str) -> str:
 
     Accepts relative or absolute paths. Returns the configured value.
     """
-    out = str(output_dir or "").strip() or "outputs"
+    out = str(output_dir or "").strip() or get_default_output_dir()
     GlobalConfig.OUTPUT_DIR = out
     global BASE_OUTPUT_DIR
     BASE_OUTPUT_DIR = out
@@ -270,6 +287,7 @@ def dump_config() -> Dict:
             "contact": CONTACT,
         },
         "safety_caps": SAFETY_CAPS,
+        "user_tunable_limits": USER_TUNABLE_LIMITS,
         "engine_defaults": ENGINE_DEFAULTS,
         "limiter_defaults": LIMITER_DEFAULTS,
         "server_model": SERVER_MODEL_DEFAULTS,

@@ -1,4 +1,4 @@
-# NetLoader-X (v3.7)
+# NetLoader-X (v4.0)
 
 Defensive Load & Failure Simulation Framework
 
@@ -34,6 +34,33 @@ Install optional dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
+## Build Standalone Binary
+
+NetLoader-X includes a small cross-platform binary build setup using PyInstaller.
+
+Install build dependency:
+
+```bash
+pip install -r requirements-build.txt
+```
+
+Build binary (test mode: build only):
+
+```bash
+python scripts/install-netloader-x-binary.py --mode test --clean-dist --verify
+```
+
+Install binary (interactive mode):
+
+```bash
+python scripts/install-netloader-x-binary.py --mode install --clean-dist
+```
+
+Build output defaults to `bin/`.
+Default persistent report output directory is `$HOME/netloader-x-output`.
+
+For full details, see [`docs/BinaryBuild.md`](docs/BinaryBuild.md).
 
 ## Quick Start
 
@@ -95,7 +122,7 @@ python netloader-x.py quick-test --short --no-report
 ```
 
 Common global flags:
-- `--output-dir`, `-o`: base output folder (default: `outputs`)
+- `--output-dir`, `-o`: base output folder (default: `$HOME/netloader-x-output`)
 - `--seed`: deterministic runs
 - `--no-report`: skip report export (no file writes)
 - `--verbose`, `-v`: extra logs
@@ -120,10 +147,10 @@ python netloader-x.py run --profile mixed --threads 60 --duration 90
 
 ## Reports (HTML Output)
 
-Unless you use `--no-report`, each run exports a new folder under your output directory:
+Unless you use `--no-report`, each run exports a new folder under your output directory (default: `$HOME/netloader-x-output`):
 
 ```
-outputs/<RUN_NAME>_<YYYY-MM-DD_HH-MM-SS>/
+$HOME/netloader-x-output/<RUN_NAME>_<YYYY-MM-DD_HH-MM-SS>/
 ```
 
 Files in that folder:
@@ -185,7 +212,7 @@ python netloader-x.py web --host 127.0.0.1 --port 8080
 Summarize report folders containing `metrics.json` files:
 
 ```bash
-python netloader-x.py report outputs
+python netloader-x.py report "$HOME/netloader-x-output"
 ```
 
 ## Development

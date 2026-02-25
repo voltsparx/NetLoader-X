@@ -6,7 +6,9 @@ Safe, abstract server behavior model with no networking.
 import random
 import threading
 import time
-from typing import Dict
+from typing import Dict, Optional
+
+from core.config import USER_TUNABLE_LIMITS
 
 
 SERVER_PROFILES = {
@@ -39,25 +41,65 @@ class LocalhostSimulator:
     Simulated server receiving abstract load events.
     """
 
-    def __init__(self, profile_name: str = "small-web"):
+    def __init__(self, profile_name: str = "small-web", overrides: Optional[Dict] = None):
         if profile_name not in SERVER_PROFILES:
             raise ValueError("Unknown server profile")
 
         self.profile_name = profile_name
         self.profile = SERVER_PROFILES[profile_name]
+        self.overrides = overrides or {}
 
         self.max_workers = self.profile["max_workers"]
-        self.queue_limit = self.profile["queue_limit"]
+        self.queue_limit = int(
+            self._clamp(
+                self.overrides.get("queue_limit", self.profile["queue_limit"]),
+                USER_TUNABLE_LIMITS["queue_limit"]["min"],
+                USER_TUNABLE_LIMITS["queue_limit"]["max"],
+            )
+        )
         self.base_latency = float(self.profile["base_latency_ms"])
-        self.timeout_ms = int(self.profile["timeout_ms"])
-        self.crash_threshold = float(self.profile["crash_threshold"])
+        self.timeout_ms = int(
+            self._clamp(
+                self.overrides.get("timeout_ms", self.profile["timeout_ms"]),
+                USER_TUNABLE_LIMITS["timeout_ms"]["min"],
+                USER_TUNABLE_LIMITS["timeout_ms"]["max"],
+            )
+        )
+        self.crash_threshold = float(
+            self._clamp(
+                self.overrides.get("crash_threshold", self.profile["crash_threshold"]),
+                USER_TUNABLE_LIMITS["crash_threshold"]["min"],
+                USER_TUNABLE_LIMITS["crash_threshold"]["max"],
+            )
+        )
+        self.recovery_rate = float(
+            self._clamp(
+                self.overrides.get("recovery_rate", 0.04),
+                USER_TUNABLE_LIMITS["recovery_rate"]["min"],
+                USER_TUNABLE_LIMITS["recovery_rate"]["max"],
+            )
+        )
+        self.error_floor = float(
+            self._clamp(
+                self.overrides.get("error_floor", 0.04),
+                USER_TUNABLE_LIMITS["error_floor"]["min"],
+                USER_TUNABLE_LIMITS["error_floor"]["max"],
+            )
+        )
 
         self.lock = threading.Lock()
         self.random = random.Random()
-        self.recovery_rate = 0.04
         self.last_update = time.monotonic()
 
         self.reset()
+
+    @staticmethod
+    def _clamp(value, low, high):
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            value = float(low)
+        return max(float(low), min(float(high), value))
 
     def ingest_load(self, events: int, slow_clients: int = 0):
         """
@@ -127,7 +169,7 @@ class LocalhostSimulator:
 
             self.error_rate = min(
                 1.0,
-                0.04 + 0.65 * queue_ratio + 0.45 * max(0.0, worker_ratio - 0.6),
+                self.error_floor + 0.65 * queue_ratio + 0.45 * max(0.0, worker_ratio - 0.6),
             )
 
             self.is_degraded = self.cpu_pressure >= 0.7 or queue_ratio >= 0.8
@@ -160,6 +202,7 @@ class LocalhostSimulator:
                 "slow_workers": self.slow_workers,
                 "cpu_pressure": round(self.cpu_pressure, 3),
                 "latency_ms": round(self.latency_ms, 2),
+                "timeout_ms": self.timeout_ms,
                 "error_rate": round(self.error_rate, 4),
                 "requests_per_second": self.requests_per_second,
                 "completed": self.completed,
@@ -167,6 +210,9 @@ class LocalhostSimulator:
                 "rejected": self.rejected,
                 "degraded": self.is_degraded,
                 "crashed": self.is_crashed,
+                "recovery_rate": round(self.recovery_rate, 4),
+                "crash_threshold": round(self.crash_threshold, 4),
+                "error_floor": round(self.error_floor, 4),
             }
 
     def reset(self):

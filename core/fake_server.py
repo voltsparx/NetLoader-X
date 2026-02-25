@@ -40,10 +40,14 @@ class FakeServerEngine:
     Simulates server-side stress behavior safely
     """
 
-    def __init__(self, profile: ServerProfile):
+    def __init__(self, profile: ServerProfile, worker_count: int = 1):
         self.profile = profile
         self.request_queue = queue.Queue(maxsize=profile.max_queue)
+        self.worker_count = max(1, int(worker_count))
+        # Backward-compatible alias used by weighted load balancing.
+        self.workers = self.worker_count
         self.running = False
+        self.worker_threads = []
 
         # Metrics
         self.total_requests = 0
@@ -55,12 +59,24 @@ class FakeServerEngine:
         self.lock = threading.Lock()
 
     def start(self):
-        self.running = True
-        self.worker = threading.Thread(target=self._process_loop, daemon=True)
-        self.worker.start()
+        with self.lock:
+            if self.running:
+                return
+            self.running = True
+            self.worker_threads = []
+            for _ in range(self.worker_count):
+                worker = threading.Thread(target=self._process_loop, daemon=True)
+                self.worker_threads.append(worker)
+                worker.start()
 
     def stop(self):
-        self.running = False
+        with self.lock:
+            self.running = False
+            workers = list(self.worker_threads)
+
+        join_timeout = max(0.2, float(self.profile.max_latency) + 0.2)
+        for worker in workers:
+            worker.join(timeout=join_timeout)
 
     def submit_request(self):
         """
@@ -89,7 +105,11 @@ class FakeServerEngine:
         return self.request_queue.qsize() / max(self.profile.max_queue, 1)
 
     def _process_loop(self):
-        while self.running:
+        while True:
+            with self.lock:
+                if not self.running:
+                    break
+
             try:
                 self.request_queue.get(timeout=0.1)
             except queue.Empty:
@@ -126,6 +146,8 @@ class FakeServerEngine:
         """
         with self.lock:
             return {
+                "worker_count": self.worker_count,
+                "worker_threads_alive": sum(1 for w in self.worker_threads if w.is_alive()),
                 "server_requests_total": self.total_requests,
                 "server_completed": self.completed,
                 "server_timed_out": self.timed_out,
